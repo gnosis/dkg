@@ -1,0 +1,2 @@
+# dkg
+Distributed key generation
