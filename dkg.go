@@ -1,18 +1,24 @@
 package dkg
 
+import "errors"
 import "hash"
 import "crypto/elliptic"
 import "math/big"
 
 type ScalarPolynomial []*big.Int
 
-func (p ScalarPolynomial) validate(curve elliptic.Curve) error {
+func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
+	if len(p) <= 0 {
+		return []error{errors.New("dkg: empty polynomial")}
+	}
+
+	var errors []error = nil
 	for _, c := range p {
-		if !isNormalizedScalar(c, curve.Params().N) {
-			return InvalidCurveScalarError{curve, c}
+		if c.Sign() == 0 || !isNormalizedScalar(c, curve.Params().N) {
+			errors = append(errors, InvalidCurveScalarError{curve, c})
 		}
 	}
-	return nil
+	return errors
 }
 
 type node struct {
@@ -41,11 +47,18 @@ func NewNode(
 		return nil, InvalidCurvePointError{curve, g2x, g2y}
 	}
 
-	if err := secretPoly1.validate(curve); err != nil {
-		return nil, err
+	var polyErrors []error = nil
+	polyErrors = secretPoly1.validate(curve)
+	if len(secretPoly1) != len(secretPoly2) {
+		polyErrors = append(polyErrors, InvalidScalarPolynomialLengthError{secretPoly1, secretPoly2})
 	}
-	if err := secretPoly2.validate(curve); err != nil {
-		return nil, err
+	if polyErrors != nil {
+		return nil, InvalidCurveScalarPolynomialError{curve, secretPoly1, polyErrors}
+	}
+
+	polyErrors = secretPoly2.validate(curve)
+	if polyErrors != nil {
+		return nil, InvalidCurveScalarPolynomialError{curve, secretPoly2, polyErrors}
 	}
 
 	return &node{curve, hash, g2x, g2y, secretPoly1, secretPoly2}, nil

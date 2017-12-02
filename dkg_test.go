@@ -83,6 +83,52 @@ func TestInvalidNodeConstruction(t *testing.T) {
 	})
 
 	t.Run("Invalid polynomials", func(t *testing.T) {
+		badPolys := []struct {
+			poly1, poly2 ScalarPolynomial
+		}{
+			// can't have empty polynomials
+			{ScalarPolynomial{}, ScalarPolynomial{}},
+			{secretPoly1, ScalarPolynomial{}},
+			{ScalarPolynomial{}, secretPoly2},
+			// can't have polynomials with different lengths
+			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3)}},
+			{ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5)}, secretPoly2},
+			// can't have zero or unnormalized coefficients: 0 < coeff < curve.Params().N
+			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(-2), big.NewInt(3), big.NewInt(4)}},
+			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(0)}},
+			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), curve.Params().N}},
+		}
+
+		for _, bad := range badPolys {
+			node, err := NewNode(
+				curve,
+				hash,
+				g2x, g2y,
+				bad.poly1, bad.poly2,
+			)
+			if node != nil && err == nil {
+				t.Errorf(
+					"Able to create node with invalid polynomials:\n"+
+						"curve: %v\n"+
+						"hash: %T\n"+
+						"g2: %v, %v\n"+
+						"secretPoly1: %v\n"+
+						"secretPoly2: %v\n",
+					curve.Params().Name, hash, g2x, g2y, bad.poly1, bad.poly2,
+				)
+			} else if reflect.TypeOf(err) != reflect.TypeOf((*InvalidCurveScalarPolynomialError)(nil)).Elem() {
+				t.Errorf(
+					"Got unexpected error from construction with invalid polynomials:\n"+
+						"curve: %v\n"+
+						"hash: %T\n"+
+						"g2: %x\n"+
+						"secretPoly1: %v\n"+
+						"secretPoly2: %v\n",
+					"%v\n",
+					curve.Params().Name, hash, g2x, g2y, bad.poly1, bad.poly2, err,
+				)
+			}
+		}
 	})
 }
 
