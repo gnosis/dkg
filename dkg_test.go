@@ -8,12 +8,13 @@ import "crypto/sha256"
 import "encoding/base64"
 import "math/big"
 
-func GetValidParams(t *testing.T) (
+func GetValidNodeParamsForTesting(t *testing.T) (
 	curve elliptic.Curve,
 	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
-	private *big.Int,
+	secretPoly1 ScalarPolynomial,
+	secretPoly2 ScalarPolynomial,
 ) {
 	curve = elliptic.P256()
 	hash = sha256.New()
@@ -26,12 +27,13 @@ func GetValidParams(t *testing.T) (
 		t.Errorf("Could not initialize g2y")
 	}
 
-	private = big.NewInt(1)
+	secretPoly1 = ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
+	secretPoly2 = ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
 	return
 }
 
 func TestInvalidNodeConstruction(t *testing.T) {
-	curve, hash, g2x, g2y, private := GetValidParams(t)
+	curve, hash, g2x, g2y, secretPoly1, secretPoly2 := GetValidNodeParamsForTesting(t)
 	zero := big.NewInt(0)
 
 	t.Run("Invalid g2", func(t *testing.T) {
@@ -53,7 +55,7 @@ func TestInvalidNodeConstruction(t *testing.T) {
 				curve,
 				hash,
 				bad.x, bad.y,
-				private,
+				secretPoly1, secretPoly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
@@ -61,8 +63,9 @@ func TestInvalidNodeConstruction(t *testing.T) {
 						"curve: %v\n"+
 						"hash: %T\n"+
 						"g2: %v, %v\n"+
-						"private: %v\n",
-					curve.Params().Name, hash, bad.x, bad.y, private,
+						"secretPoly1: %v\n"+
+						"secretPoly2: %v\n",
+					curve.Params().Name, hash, bad.x, bad.y, secretPoly1, secretPoly2,
 				)
 			} else if reflect.TypeOf(err) != reflect.TypeOf((*InvalidCurvePointError)(nil)).Elem() {
 				t.Errorf(
@@ -70,9 +73,10 @@ func TestInvalidNodeConstruction(t *testing.T) {
 						"curve: %v\n"+
 						"hash: %T\n"+
 						"g2: %x\n"+
-						"private: %v\n",
+						"secretPoly1: %v\n"+
+						"secretPoly2: %v\n",
 					"%v\n",
-					curve.Params().Name, hash, bad.x, bad.y, private, err,
+					curve.Params().Name, hash, bad.x, bad.y, secretPoly1, secretPoly2, err,
 				)
 			}
 		}
@@ -83,13 +87,13 @@ func TestInvalidNodeConstruction(t *testing.T) {
 }
 
 func TestValidNode(t *testing.T) {
-	curve, hash, g2x, g2y, private := GetValidParams(t)
+	curve, hash, g2x, g2y, secretPoly1, secretPoly2 := GetValidNodeParamsForTesting(t)
 
 	node, err := NewNode(
 		curve,
 		hash,
 		g2x, g2y,
-		private,
+		secretPoly1, secretPoly2,
 	)
 
 	if node == nil || err != nil {
@@ -98,9 +102,10 @@ func TestValidNode(t *testing.T) {
 				"curve: %v\n"+
 				"hash: %T\n"+
 				"g2: %x\n"+
-				"private: %v\n",
+				"secretPoly1: %v\n"+
+				"secretPoly2: %v\n",
 			"%v\n",
-			curve, hash, g2x, g2y, private, err,
+			curve, hash, g2x, g2y, secretPoly1, secretPoly2, err,
 		)
 	} else {
 		t.Run("PublicKey", func(t *testing.T) {
