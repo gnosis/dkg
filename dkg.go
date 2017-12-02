@@ -64,6 +64,6 @@ func NewNode(
 	return &node{curve, hash, g2x, g2y, secretPoly1, secretPoly2}, nil
 }
 
-func (n *node) PublicKey() (x, y *big.Int) {
+func (n *node) PublicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
 }

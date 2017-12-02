@@ -154,11 +154,11 @@ func TestValidNode(t *testing.T) {
 			curve, hash, g2x, g2y, secretPoly1, secretPoly2, err,
 		)
 	} else {
-		t.Run("PublicKey", func(t *testing.T) {
-			pubx, puby := node.PublicKey()
-			pubkey := base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, pubx, puby))
-			if pubkey != "BGsX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT+NC4v4af5uO5+tKfA+eFivOM1drMV7Oy7ZAaDe/UfU=" {
-				t.Errorf("Got unexpected public key %v", pubkey)
+		t.Run("PublicKeyPart", func(t *testing.T) {
+			pubx, puby := node.PublicKeyPart()
+			pubkeypt := base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, pubx, puby))
+			if pubkeypt != "BGsX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT+NC4v4af5uO5+tKfA+eFivOM1drMV7Oy7ZAaDe/UfU=" {
+				t.Errorf("Got unexpected public key part %v", pubkeypt)
 			}
 		})
 	}
