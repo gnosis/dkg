@@ -1,7 +1,6 @@
 package dkg
 
 import "errors"
-import "hash"
 import "crypto/elliptic"
 import "math/big"
 
@@ -22,11 +21,16 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 }
 
 type node struct {
-	curve       elliptic.Curve
-	hash        hash.Hash
-	g2x, g2y    *big.Int
-	secretPoly1 ScalarPolynomial
-	secretPoly2 ScalarPolynomial
+	curve             elliptic.Curve
+	zkParam           *big.Int
+	g2x, g2y          *big.Int
+	id                *big.Int
+	secretPoly1       ScalarPolynomial
+	secretPoly2       ScalarPolynomial
+	otherParticipants []struct {
+		id                 *big.Int
+		verificationPoints pointTuple
+	}
 }
 
 func isNormalizedScalar(x, n *big.Int) bool {
@@ -35,8 +39,9 @@ func isNormalizedScalar(x, n *big.Int) bool {
 
 func NewNode(
 	curve elliptic.Curve,
-	hash hash.Hash,
 	g2x *big.Int, g2y *big.Int,
+	zkParam *big.Int,
+	id *big.Int,
 	secretPoly1 ScalarPolynomial,
 	secretPoly2 ScalarPolynomial,
 ) (*node, error) {
@@ -61,9 +66,24 @@ func NewNode(
 		return nil, InvalidCurveScalarPolynomialError{curve, secretPoly2, polyErrors}
 	}
 
-	return &node{curve, hash, g2x, g2y, secretPoly1, secretPoly2}, nil
+	return &node{curve, g2x, g2y, zkParam, id, secretPoly1, secretPoly2, nil}, nil
 }
 
 func (n *node) PublicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
+}
+
+type pointTuple []struct{ X, Y *big.Int }
+
+func (n *node) VerificationPoints() pointTuple {
+	// curve.add(curve.multiply(curve.G, c1), curve.multiply(G2, c2))
+	// for c1, c2 in zip(spoly1, spoly2)
+	vpts := make(pointTuple, len(n.secretPoly1))
+	for i, c1 := range n.secretPoly1 {
+		c2 := n.secretPoly2[i]
+		ax, ay := n.curve.ScalarBaseMult(c1.Bytes())
+		bx, by := n.curve.ScalarMult(n.g2x, n.g2y, c2.Bytes())
+		vpts[i].X, vpts[i].Y = n.curve.Add(ax, ay, bx, by)
+	}
+	return vpts
 }

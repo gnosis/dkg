@@ -1,23 +1,24 @@
-package dkg
+package dkg_test
 
-import "hash"
+import "github.com/gnosis/dkg"
+
+import "bytes"
 import "testing"
 import "reflect"
 import "crypto/elliptic"
-import "crypto/sha256"
 import "encoding/base64"
 import "math/big"
 
-func GetValidNodeParamsForTesting(t *testing.T) (
+func getValidNodeParamsForTesting(t *testing.T) (
 	curve elliptic.Curve,
-	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
-	secretPoly1 ScalarPolynomial,
-	secretPoly2 ScalarPolynomial,
+	zkParam *big.Int,
+	id *big.Int,
+	secretPoly1 dkg.ScalarPolynomial,
+	secretPoly2 dkg.ScalarPolynomial,
 ) {
 	curve = elliptic.P256()
-	hash = sha256.New()
 
 	var success bool
 	if g2x, success = new(big.Int).SetString("0a5d23f079fed8f443d7fa87d70849f846f941c07d77b1e1df139e8f7ff61a70", 16); !success {
@@ -27,13 +28,20 @@ func GetValidNodeParamsForTesting(t *testing.T) (
 		t.Errorf("Could not initialize g2y")
 	}
 
-	secretPoly1 = ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
-	secretPoly2 = ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
+	zkParam = new(big.Int).SetBytes([]byte("arbitrary zk proof parameter"))
+
+	id = big.NewInt(12345)
+	secretPoly1 = dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
+	secretPoly2 = dkg.ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
 	return
 }
 
+func serializePoint(curve elliptic.Curve, x, y *big.Int) string {
+	return base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, x, y))
+}
+
 func TestInvalidNodeConstruction(t *testing.T) {
-	curve, hash, g2x, g2y, secretPoly1, secretPoly2 := GetValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 	zero := big.NewInt(0)
 
 	t.Run("Invalid g2", func(t *testing.T) {
@@ -51,32 +59,33 @@ func TestInvalidNodeConstruction(t *testing.T) {
 		}
 
 		for _, bad := range badPoints {
-			node, err := NewNode(
+			node, err := dkg.NewNode(
 				curve,
-				hash,
 				bad.x, bad.y,
+				zkParam,
+				id,
 				secretPoly1, secretPoly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
 					"Able to create node with invalid g2:\n"+
 						"curve: %v\n"+
-						"hash: %T\n"+
+						"id: %T\n"+
 						"g2: %v, %v\n"+
 						"secretPoly1: %v\n"+
 						"secretPoly2: %v\n",
-					curve.Params().Name, hash, bad.x, bad.y, secretPoly1, secretPoly2,
+					curve.Params().Name, id, bad.x, bad.y, secretPoly1, secretPoly2,
 				)
-			} else if reflect.TypeOf(err) != reflect.TypeOf((*InvalidCurvePointError)(nil)).Elem() {
+			} else if reflect.TypeOf(err) != reflect.TypeOf((*dkg.InvalidCurvePointError)(nil)).Elem() {
 				t.Errorf(
 					"Got unexpected error from construction with invalid g2:\n"+
 						"curve: %v\n"+
-						"hash: %T\n"+
+						"id: %T\n"+
 						"g2: %x\n"+
 						"secretPoly1: %v\n"+
 						"secretPoly2: %v\n",
 					"%v\n",
-					curve.Params().Name, hash, bad.x, bad.y, secretPoly1, secretPoly2, err,
+					curve.Params().Name, id, bad.x, bad.y, secretPoly1, secretPoly2, err,
 				)
 			}
 		}
@@ -84,48 +93,49 @@ func TestInvalidNodeConstruction(t *testing.T) {
 
 	t.Run("Invalid polynomials", func(t *testing.T) {
 		badPolys := []struct {
-			poly1, poly2 ScalarPolynomial
+			poly1, poly2 dkg.ScalarPolynomial
 		}{
 			// can't have empty polynomials
-			{ScalarPolynomial{}, ScalarPolynomial{}},
-			{secretPoly1, ScalarPolynomial{}},
-			{ScalarPolynomial{}, secretPoly2},
+			{dkg.ScalarPolynomial{}, dkg.ScalarPolynomial{}},
+			{secretPoly1, dkg.ScalarPolynomial{}},
+			{dkg.ScalarPolynomial{}, secretPoly2},
 			// can't have polynomials with different lengths
-			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3)}},
-			{ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5)}, secretPoly2},
+			{secretPoly1, dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3)}},
+			{dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4), big.NewInt(5)}, secretPoly2},
 			// can't have zero or unnormalized coefficients: 0 < coeff < curve.Params().N
-			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(-2), big.NewInt(3), big.NewInt(4)}},
-			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(0)}},
-			{secretPoly1, ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), curve.Params().N}},
+			{secretPoly1, dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(-2), big.NewInt(3), big.NewInt(4)}},
+			{secretPoly1, dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(0)}},
+			{secretPoly1, dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), curve.Params().N}},
 		}
 
 		for _, bad := range badPolys {
-			node, err := NewNode(
+			node, err := dkg.NewNode(
 				curve,
-				hash,
 				g2x, g2y,
+				zkParam,
+				id,
 				bad.poly1, bad.poly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
 					"Able to create node with invalid polynomials:\n"+
 						"curve: %v\n"+
-						"hash: %T\n"+
+						"id: %T\n"+
 						"g2: %v, %v\n"+
 						"secretPoly1: %v\n"+
 						"secretPoly2: %v\n",
-					curve.Params().Name, hash, g2x, g2y, bad.poly1, bad.poly2,
+					curve.Params().Name, id, g2x, g2y, bad.poly1, bad.poly2,
 				)
-			} else if reflect.TypeOf(err) != reflect.TypeOf((*InvalidCurveScalarPolynomialError)(nil)).Elem() {
+			} else if reflect.TypeOf(err) != reflect.TypeOf((*dkg.InvalidCurveScalarPolynomialError)(nil)).Elem() {
 				t.Errorf(
 					"Got unexpected error from construction with invalid polynomials:\n"+
 						"curve: %v\n"+
-						"hash: %T\n"+
+						"id: %T\n"+
 						"g2: %x\n"+
 						"secretPoly1: %v\n"+
 						"secretPoly2: %v\n",
 					"%v\n",
-					curve.Params().Name, hash, g2x, g2y, bad.poly1, bad.poly2, err,
+					curve.Params().Name, id, g2x, g2y, bad.poly1, bad.poly2, err,
 				)
 			}
 		}
@@ -133,12 +143,13 @@ func TestInvalidNodeConstruction(t *testing.T) {
 }
 
 func TestValidNode(t *testing.T) {
-	curve, hash, g2x, g2y, secretPoly1, secretPoly2 := GetValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
-	node, err := NewNode(
+	node, err := dkg.NewNode(
 		curve,
-		hash,
 		g2x, g2y,
+		zkParam,
+		id,
 		secretPoly1, secretPoly2,
 	)
 
@@ -146,19 +157,32 @@ func TestValidNode(t *testing.T) {
 		t.Errorf(
 			"Could not create new node with params:\n"+
 				"curve: %v\n"+
-				"hash: %T\n"+
-				"g2: %x\n"+
+				"g2: %v\n"+
+				"zkParam: %v\n"+
+				"id: %v\n"+
 				"secretPoly1: %v\n"+
-				"secretPoly2: %v\n",
-			"%v\n",
-			curve, hash, g2x, g2y, secretPoly1, secretPoly2, err,
+				"secretPoly2: %v\n"+
+				"%v\n",
+			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, secretPoly1, secretPoly2, err,
 		)
 	} else {
 		t.Run("PublicKeyPart", func(t *testing.T) {
 			pubx, puby := node.PublicKeyPart()
-			pubkeypt := base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, pubx, puby))
+			pubkeypt := serializePoint(curve, pubx, puby)
 			if pubkeypt != "BGsX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT+NC4v4af5uO5+tKfA+eFivOM1drMV7Oy7ZAaDe/UfU=" {
 				t.Errorf("Got unexpected public key part %v", pubkeypt)
+			}
+		})
+
+		t.Run("VerificationPoints", func(t *testing.T) {
+			vpts := node.VerificationPoints()
+			vptsbuf := new(bytes.Buffer)
+			for _, vpt := range vpts {
+				vptsbuf.Write(elliptic.Marshal(curve, vpt.X, vpt.Y))
+			}
+			vptsb64 := base64.StdEncoding.EncodeToString(vptsbuf.Bytes())
+			if vptsb64 != "BPFDX6elpksk6iExJDe/gbJxDb2tIWbUJXzVqN/nFOosDwTmcF3f4pNOvlyGBEP4Tg/jVeQ3Kn6ZPcE25gyIakUE0092mDPqAhCtHlY9oXVfdSVjzEtj62E46DCshQQnHja4iawCF7+tDpKiyquVCVXe6YDSL6LKU0nPJbzD1ajKVgRQX4bRbeMiqxb2tqhtGN4u0gcMyYgSD/7mCxq5HarnYu5BpcypegPDAAfCcDxTd0MJhmX/pbW1J/5jZxpmc2x7BBKEtkJIcvedCYbsC9W20Kiild3o12o7s+rmNXzK8b3qncpaXOFaX8rr66EwzMhAZUbGOJSa9FvDL/6V7HCH8rM=" {
+				t.Errorf("Got unexpected verification points %v", vptsb64)
 			}
 		})
 	}
