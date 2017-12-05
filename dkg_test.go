@@ -181,7 +181,7 @@ func TestValidNode(t *testing.T) {
 				vptsbuf.Write(elliptic.Marshal(curve, vpt.X, vpt.Y))
 			}
 			vptsb64 := base64.StdEncoding.EncodeToString(vptsbuf.Bytes())
-			if vptsb64 != "BPFDX6elpksk6iExJDe/gbJxDb2tIWbUJXzVqN/nFOosDwTmcF3f4pNOvlyGBEP4Tg/jVeQ3Kn6ZPcE25gyIakUE0092mDPqAhCtHlY9oXVfdSVjzEtj62E46DCshQQnHja4iawCF7+tDpKiyquVCVXe6YDSL6LKU0nPJbzD1ajKVgRQX4bRbeMiqxb2tqhtGN4u0gcMyYgSD/7mCxq5HarnYu5BpcypegPDAAfCcDxTd0MJhmX/pbW1J/5jZxpmc2x7BBKEtkJIcvedCYbsC9W20Kiild3o12o7s+rmNXzK8b3qncpaXOFaX8rr66EwzMhAZUbGOJSa9FvDL/6V7HCH8rM=" {
+			if vptsb64 != "BBRPCyOypp95ucbYOZTBcfoFklBEE2Hi3aFplbHeTmth17kAicWtDqV1IW/pqP0lEvv7ryW6ChH1Tw3V9I6WZOwEUyCd5oet8nQmjgHXn7uDW4wrnH23de/fVm9aO6Te4CfrhI3o0b0KFY/E7Z+gEGtLhE3zNFOwhEM5nQC/NNr4hQSgtaBOX63vRhZF3vZS5PdwaH2gDHY2cEBz2iETYHeliziLq1WGn10XqAmdT4vOtvYuFlxWUiHpJFILbi4LpMwNBFW0kj8eA8IieBQBqaU/eHALCS1QvAVW8zOriM+ZnlhxDkE6sX8aDPoQsCZ8EjAKt9N52qKsf8+YF8tSG403rxM=" {
 				t.Errorf("Got unexpected verification points %v", vptsb64)
 			}
 		})

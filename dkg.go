@@ -21,12 +21,14 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 }
 
 type node struct {
-	curve             elliptic.Curve
-	zkParam           *big.Int
-	g2x, g2y          *big.Int
-	id                *big.Int
-	secretPoly1       ScalarPolynomial
-	secretPoly2       ScalarPolynomial
+	curve    elliptic.Curve
+	g2x, g2y *big.Int
+	zkParam  *big.Int
+
+	id          *big.Int
+	secretPoly1 ScalarPolynomial
+	secretPoly2 ScalarPolynomial
+
 	otherParticipants []struct {
 		id                 *big.Int
 		verificationPoints pointTuple
@@ -76,8 +78,7 @@ func (n *node) PublicKeyPart() (x, y *big.Int) {
 type pointTuple []struct{ X, Y *big.Int }
 
 func (n *node) VerificationPoints() pointTuple {
-	// curve.add(curve.multiply(curve.G, c1), curve.multiply(G2, c2))
-	// for c1, c2 in zip(spoly1, spoly2)
+	// [c1 * G + c2 * G2 for c1, c2 in zip(spoly1, spoly2)]
 	vpts := make(pointTuple, len(n.secretPoly1))
 	for i, c1 := range n.secretPoly1 {
 		c2 := n.secretPoly2[i]
