@@ -5,6 +5,7 @@ import "github.com/gnosis/dkg"
 import "bytes"
 import "testing"
 import "reflect"
+import "crypto/ecdsa"
 import "crypto/elliptic"
 import "encoding/base64"
 import "math/big"
@@ -15,6 +16,7 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	g2y *big.Int,
 	zkParam *big.Int,
 	id *big.Int,
+	key ecdsa.PrivateKey,
 	secretPoly1 dkg.ScalarPolynomial,
 	secretPoly2 dkg.ScalarPolynomial,
 ) {
@@ -31,6 +33,14 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	zkParam = new(big.Int).SetBytes([]byte("arbitrary zk proof parameter"))
 
 	id = big.NewInt(12345)
+
+	privd := big.NewInt(1234567890)
+	pubx, puby := curve.ScalarBaseMult(privd.Bytes())
+
+	key = ecdsa.PrivateKey{
+		ecdsa.PublicKey{curve, pubx, puby},
+		privd,
+	}
 	secretPoly1 = dkg.ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
 	secretPoly2 = dkg.ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
 	return
@@ -41,7 +51,7 @@ func serializePoint(curve elliptic.Curve, x, y *big.Int) string {
 }
 
 func TestInvalidNodeConstruction(t *testing.T) {
-	curve, g2x, g2y, zkParam, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 	zero := big.NewInt(0)
 
 	t.Run("Invalid g2", func(t *testing.T) {
@@ -60,11 +70,8 @@ func TestInvalidNodeConstruction(t *testing.T) {
 
 		for _, bad := range badPoints {
 			node, err := dkg.NewNode(
-				curve,
-				bad.x, bad.y,
-				zkParam,
-				id,
-				secretPoly1, secretPoly2,
+				curve, bad.x, bad.y, zkParam,
+				id, key, secretPoly1, secretPoly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
@@ -110,11 +117,8 @@ func TestInvalidNodeConstruction(t *testing.T) {
 
 		for _, bad := range badPolys {
 			node, err := dkg.NewNode(
-				curve,
-				g2x, g2y,
-				zkParam,
-				id,
-				bad.poly1, bad.poly2,
+				curve, g2x, g2y, zkParam,
+				id, key, bad.poly1, bad.poly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
@@ -143,14 +147,11 @@ func TestInvalidNodeConstruction(t *testing.T) {
 }
 
 func TestValidNode(t *testing.T) {
-	curve, g2x, g2y, zkParam, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
 	node, err := dkg.NewNode(
-		curve,
-		g2x, g2y,
-		zkParam,
-		id,
-		secretPoly1, secretPoly2,
+		curve, g2x, g2y, zkParam,
+		id, key, secretPoly1, secretPoly2,
 	)
 
 	if node == nil || err != nil {

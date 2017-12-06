@@ -1,6 +1,7 @@
 package dkg
 
 import "errors"
+import "crypto/ecdsa"
 import "crypto/elliptic"
 import "math/big"
 
@@ -26,12 +27,20 @@ type node struct {
 	zkParam  *big.Int
 
 	id          *big.Int
+	key         ecdsa.PrivateKey
 	secretPoly1 ScalarPolynomial
 	secretPoly2 ScalarPolynomial
 
+	broadcast chan Message
+
 	otherParticipants []struct {
 		id                 *big.Int
+		key                ecdsa.PublicKey
+		secretShare1       *big.Int
+		secretShare2       *big.Int
 		verificationPoints pointTuple
+
+		private chan Message
 	}
 }
 
@@ -44,6 +53,7 @@ func NewNode(
 	g2x *big.Int, g2y *big.Int,
 	zkParam *big.Int,
 	id *big.Int,
+	key ecdsa.PrivateKey,
 	secretPoly1 ScalarPolynomial,
 	secretPoly2 ScalarPolynomial,
 ) (*node, error) {
@@ -68,7 +78,7 @@ func NewNode(
 		return nil, InvalidCurveScalarPolynomialError{curve, secretPoly2, polyErrors}
 	}
 
-	return &node{curve, g2x, g2y, zkParam, id, secretPoly1, secretPoly2, nil}, nil
+	return &node{curve, g2x, g2y, zkParam, id, key, secretPoly1, secretPoly2, nil, nil}, nil
 }
 
 func (n *node) PublicKeyPart() (x, y *big.Int) {
