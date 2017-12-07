@@ -1,6 +1,8 @@
 package dkg
 
 import "errors"
+import "hash"
+import "time"
 import "crypto/ecdsa"
 import "crypto/elliptic"
 import "math/big"
@@ -23,8 +25,10 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 
 type node struct {
 	curve    elliptic.Curve
+	hash     hash.Hash
 	g2x, g2y *big.Int
 	zkParam  *big.Int
+	timeout  time.Duration
 
 	id          *big.Int
 	key         ecdsa.PrivateKey
@@ -50,8 +54,11 @@ func isNormalizedScalar(x, n *big.Int) bool {
 
 func NewNode(
 	curve elliptic.Curve,
+	hash hash.Hash,
 	g2x *big.Int, g2y *big.Int,
 	zkParam *big.Int,
+	timeout time.Duration,
+
 	id *big.Int,
 	key ecdsa.PrivateKey,
 	secretPoly1 ScalarPolynomial,
@@ -78,16 +85,20 @@ func NewNode(
 		return nil, InvalidCurveScalarPolynomialError{curve, secretPoly2, polyErrors}
 	}
 
-	return &node{curve, g2x, g2y, zkParam, id, key, secretPoly1, secretPoly2, nil, nil}, nil
+	return &node{
+		curve, hash, g2x, g2y, zkParam, timeout,
+		id, key, secretPoly1, secretPoly2,
+		nil, nil,
+	}, nil
 }
 
-func (n *node) PublicKeyPart() (x, y *big.Int) {
+func (n *node) publicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
 }
 
 type pointTuple []struct{ X, Y *big.Int }
 
-func (n *node) VerificationPoints() pointTuple {
+func (n *node) verificationPoints() pointTuple {
 	// [c1 * G + c2 * G2 for c1, c2 in zip(spoly1, spoly2)]
 	vpts := make(pointTuple, len(n.secretPoly1))
 	for i, c1 := range n.secretPoly1 {
