@@ -92,13 +92,13 @@ func NewNode(
 	}, nil
 }
 
-func (n *node) publicKeyPart() (x, y *big.Int) {
+func (n *node) PublicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
 }
 
 type pointTuple []struct{ X, Y *big.Int }
 
-func (n *node) verificationPoints() pointTuple {
+func (n *node) VerificationPoints() pointTuple {
 	// [c1 * G + c2 * G2 for c1, c2 in zip(spoly1, spoly2)]
 	vpts := make(pointTuple, len(n.secretPoly1))
 	for i, c1 := range n.secretPoly1 {
