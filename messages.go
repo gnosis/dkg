@@ -28,19 +28,17 @@ func NewMessage(
 	_mType MessageType,
 	id *big.Int,
 	sx *big.Int, sy *big.Int,
-	p *big.Int, 
-	A, *big.Int,
-	i int, j int, 
+	p *big.Int,
+	A *big.Int,
+	i int, j int,
 	complaint bool,
-	private bool, 
+	private bool,
 ) (*message, error) {
 	//check message has valid id
 	//determine private or public
 	//determine complaint or no complaint
 	//ensure message type correlates with above
-	return &message{
-		
-	}
+	return nil, &message{}
 }
 
 func broadCastMessage(message Message) bool {
