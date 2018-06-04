@@ -97,10 +97,10 @@ func TestInvalidNodeConstruction(t *testing.T) {
 					"Got unexpected error from construction with invalid g2:\n"+
 						"curve: %v\n"+
 						"id: %T\n"+
-						"g2: %x\n"+
+						"g2: %x %x\n"+
 						"secretPoly1: %v\n"+
-						"secretPoly2: %v\n",
-					"%v\n",
+						"secretPoly2: %v\n"+
+						"%v\n",
 					curve.Params().Name, id, bad.x, bad.y, secretPoly1, secretPoly2, err,
 				)
 			}
@@ -144,10 +144,10 @@ func TestInvalidNodeConstruction(t *testing.T) {
 					"Got unexpected error from construction with invalid polynomials:\n"+
 						"curve: %v\n"+
 						"id: %T\n"+
-						"g2: %x\n"+
+						"g2: %x %x\n"+
 						"secretPoly1: %v\n"+
-						"secretPoly2: %v\n",
-					"%v\n",
+						"secretPoly2: %v\n"+
+						"%v\n",
 					curve.Params().Name, id, g2x, g2y, bad.poly1, bad.poly2, err,
 				)
 			}
