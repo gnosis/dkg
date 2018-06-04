@@ -1,11 +1,13 @@
 package dkg
 
-import "errors"
-import "hash"
-import "time"
-import "crypto/ecdsa"
-import "crypto/elliptic"
-import "math/big"
+import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"errors"
+	"hash"
+	"math/big"
+	"time"
+)
 
 type ScalarPolynomial []*big.Int
 

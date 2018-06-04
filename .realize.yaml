@@ -3,8 +3,8 @@ settings:
     force: false
     interval: 100ms
 server:
-  status: false
-  open: false
+  status: true
+  open: true
   port: 5001
   host: localhost
 schema:

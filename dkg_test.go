@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-// import "bytes"
-
 func getValidNodeParamsForTesting(t *testing.T) (
 	curve elliptic.Curve,
 	hash hash.Hash,
