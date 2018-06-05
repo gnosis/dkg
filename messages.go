@@ -39,10 +39,10 @@ func NewSecretSharesMessage(
 }
 
 func EncodeSecretSharesMessage(
-	network bytes.Buffer,
+	network *bytes.Buffer,
 	message *SecretSharesMessage,
 ) bool {
-	enc := gob.NewEncoder(&network)
+	enc := gob.NewEncoder(network)
 	err := enc.Encode(message)
 	if err != nil {
 		log.Fatal("encode error:", err)
@@ -54,17 +54,17 @@ func EncodeSecretSharesMessage(
 }
 
 func DecodeSecretSharesMessage(
-	network bytes.Buffer,
-) SecretSharesMessage {
-	dec := gob.NewDecoder(&network)
+	network *bytes.Buffer,
+) *SecretSharesMessage {
+	dec := gob.NewDecoder(network)
 	var decoded SecretSharesMessage
 	err := dec.Decode(&decoded)
 	if err != nil {
-		log.Fatal("decode error", err)
-		return decoded
+		log.Fatal("decode error ", err)
+		return &decoded
 	} else {
 		log.Println("decode success")
-		return decoded
+		return &decoded
 	}
 }
 

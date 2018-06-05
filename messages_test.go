@@ -39,6 +39,18 @@ func createNetworkBuffer(t *testing.T) bytes.Buffer {
 	return network
 }
 
+func compareMessageEquality(
+	m1 *SecretSharesMessage,
+	m2 *SecretSharesMessage,
+) bool {
+	if m1.From != m2.From || m1.To != m2.To ||
+		m1.S1x != m2.S1x || m1.S1y != m2.S1y ||
+		m1.S2x != m2.S2x || m1.S2y != m2.S2y {
+		return false
+	}
+	return true
+}
+
 func TestCreateValidMessage(t *testing.T) {
 	From, To, S1x, S1y, S2x, S2y := getValidMessageParamsForTesting(t)
 
@@ -69,7 +81,24 @@ func TestEncodeDecodeValidMessage(t *testing.T) {
 		From, To, S1x, S1y, S2x, S2y,
 	)
 
-	encodedRes := EncodeSecretSharesMessage(network, message)
+	// enc := gob.NewEncoder(&network)
+	// err := enc.Encode(message)
+	// if err != nil {
+	// 	log.Fatal("encode error:", err)
+	// } else {
+	// 	log.Println("encode success")
+	// }
+
+	// dec := gob.NewDecoder(&network)
+	// var decoded SecretSharesMessage
+	// errd := dec.Decode(&decoded)
+	// if errd != nil {
+	// 	log.Fatal("decode error ", err)
+	// } else {
+	// 	log.Println("decode success")
+	// }
+
+	encodedRes := EncodeSecretSharesMessage(&network, message)
 	if !encodedRes {
 		t.Errorf(
 			"Could not encode message with \n"+
@@ -81,19 +110,19 @@ func TestEncodeDecodeValidMessage(t *testing.T) {
 		fmt.Println("successfully encoded message")
 	}
 
-	// decodedRes := DecodeSecretSharesMessage(network)
+	decodedRes := DecodeSecretSharesMessage(&network)
 
-	// if &decodedRes != message {
-	// 	t.Errorf(
-	// 		"Could not decode message with \n"+
-	// 			"network: %v\n"+
-	// 			"message: %v\n"+
-	// 			"decoded: %v\n",
-	// 		network, message, decodedRes,
-	// 	)
-	// } else {
-	// 	fmt.Println("successfully decoded message")
-	// }
+	if compareMessageEquality(message, decodedRes) {
+		t.Errorf(
+			"Could not decode message with \n"+
+				"network: %v\n"+
+				"message: %v\n"+
+				"decoded: %v\n",
+			network, message, decodedRes,
+		)
+	} else {
+		fmt.Println("successfully decoded message")
+	}
 
 }
 
