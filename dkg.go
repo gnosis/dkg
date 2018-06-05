@@ -37,7 +37,7 @@ type node struct {
 	secretPoly1 ScalarPolynomial
 	secretPoly2 ScalarPolynomial
 
-	broadcast chan Message
+	broadcast chan SecretSharesMessage
 
 	otherParticipants []struct {
 		id                 *big.Int
@@ -46,7 +46,7 @@ type node struct {
 		secretShare2       *big.Int
 		verificationPoints pointTuple
 
-		private chan Message
+		private chan SecretSharesMessage
 	}
 }
 

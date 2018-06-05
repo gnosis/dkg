@@ -10,24 +10,21 @@ Messages in the protocol need to accomplish the following:
 4. Key Generation:
     1. Broadcast public keys out
 
-Message types:
-```
-Distribution
-Verification
-Generation
-```
-```
-Struct {
-    _mType         MessageType
-    id             *big.Int //message id
-    sx             *big.Int //s_ij
-    sy             *big.Int //s'_ij
-    P              *big.Int //P_ik
-    A              *big.Int //A_i0
-    i              int      //player
-    j              int      //server
-    complaint      bool
-    complaintValid bool
-    private        bool
+```go
+struct SecretSharesMessage {
+    from     *big.Int // or whatever the player id type is
+    to       *big.Int
+    s1x, s1y *big.Int
+    s2x, s2y *big.Int
 }
+
+var network bytes.Buffer        // Stand-in for a network connection
+	enc := gob.NewEncoder(&network) // Will write to network.
+	dec := gob.NewDecoder(&network) // Will read from network.
+
+	// Encode (send) some values.
+	var msg = SecretSharesMessage{new big.Int(1), new big.Int(2), ... }
+    err := enc.Encode(msg)
+    var received SecretSharesMessage
+    enc.Decode(&received)
 ```

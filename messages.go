@@ -1,6 +1,9 @@
 package dkg
 
 import (
+	"bytes"
+	"encoding/gob"
+	"log"
 	"math/big"
 )
 
@@ -13,42 +16,66 @@ const (
 	Generation   MessageType = iota
 )
 
-type Message struct {
-	mType     MessageType
-	id        *big.Int
-	sx, sy    *big.Int // private info
-	p         *big.Int // public info
-	A         *big.Int // public key
-	i, j      int      //
-	complaint bool
-	private   bool
+type SecretSharesMessage struct {
+	From     *big.Int
+	To       *big.Int
+	S1x, S1y *big.Int
+	S2x, S2y *big.Int
 }
 
-func NewMessage(
-	_mType MessageType,
-	id *big.Int,
-	sx *big.Int, sy *big.Int,
-	p *big.Int,
-	A *big.Int,
-	i int, j int,
-	complaint bool,
-	private bool,
-) (*message, error) {
+func NewSecretSharesMessage(
+	From *big.Int,
+	To *big.Int,
+	S1x *big.Int, S1y *big.Int,
+	S2x *big.Int, S2y *big.Int,
+) *SecretSharesMessage {
 	//check message has valid id
 	//determine private or public
 	//determine complaint or no complaint
 	//ensure message type correlates with above
-	return nil, &message{}
+	return &SecretSharesMessage{
+		From, To, S1x, S1y, S2x, S2y,
+	}
 }
 
-func broadCastMessage(message Message) bool {
-	//TODO
+func EncodeSecretSharesMessage(
+	network bytes.Buffer,
+	message *SecretSharesMessage,
+) bool {
+	enc := gob.NewEncoder(&network)
+	err := enc.Encode(message)
+	if err != nil {
+		log.Fatal("encode error:", err)
+		return false
+	} else {
+		log.Println("encode success")
+		return true
+	}
 }
 
-func sendMessage(receiver int, message Message) bool {
-	//TODO
+func DecodeSecretSharesMessage(
+	network bytes.Buffer,
+) SecretSharesMessage {
+	dec := gob.NewDecoder(&network)
+	var decoded SecretSharesMessage
+	err := dec.Decode(&decoded)
+	if err != nil {
+		log.Fatal("decode error", err)
+		return decoded
+	} else {
+		log.Println("decode success")
+		return decoded
+	}
 }
 
-func receiveMessage(message Message) bool {
-	//TODO
-}
+// func broadCastMessage(message Message) bool {
+// 	//ToDO
+// }
+
+// func sendMessage(receiver int, message Message) bool {
+// 	//ToDO
+// }
+
+// func receiveMessage(message Message) bool {
+// 	//ToDO
+// }
