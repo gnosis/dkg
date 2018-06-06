@@ -37,33 +37,3 @@ func NewSecretSharesMessage(
 		From, To, S1x, S1y, S2x, S2y,
 	}
 }
-
-func EncodeSecretSharesMessage(
-	network *bytes.Buffer,
-	message *SecretSharesMessage,
-) bool {
-	enc := gob.NewEncoder(network)
-	err := enc.Encode(message)
-	if err != nil {
-		log.Fatal("encode error:", err)
-		return false
-	} else {
-		log.Println("encode success")
-		return true
-	}
-}
-
-func DecodeSecretSharesMessage(
-	network *bytes.Buffer,
-) *SecretSharesMessage {
-	dec := gob.NewDecoder(network)
-	var decoded SecretSharesMessage
-	err := dec.Decode(&decoded)
-	if err != nil {
-		log.Fatal("decode error ", err)
-		return &decoded
-	} else {
-		log.Println("decode success")
-		return &decoded
-	}
-}
