@@ -44,7 +44,7 @@ type node struct {
 		key                ecdsa.PublicKey
 		secretShare1       *big.Int
 		secretShare2       *big.Int
-		verificationPoints pointTuple
+		verificationPoints PointTuple
 
 		private chan SecretSharesMessage
 	}
@@ -98,11 +98,11 @@ func (n *node) PublicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
 }
 
-type pointTuple []struct{ X, Y *big.Int }
+type PointTuple []struct{ X, Y *big.Int }
 
-func (n *node) VerificationPoints() pointTuple {
+func (n *node) VerificationPoints() PointTuple {
 	// [c1 * G + c2 * G2 for c1, c2 in zip(spoly1, spoly2)]
-	vpts := make(pointTuple, len(n.secretPoly1))
+	vpts := make(PointTuple, len(n.secretPoly1))
 	for i, c1 := range n.secretPoly1 {
 		c2 := n.secretPoly2[i]
 		ax, ay := n.curve.ScalarBaseMult(c1.Bytes())
