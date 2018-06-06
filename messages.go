@@ -7,15 +7,6 @@ import (
 	"math/big"
 )
 
-type MessageType int
-
-const (
-	Distribution MessageType = iota
-	Verification MessageType = iota
-	Check        MessageType = iota
-	Generation   MessageType = iota
-)
-
 type SecretSharesMessage struct {
 	From     *big.Int
 	To       *big.Int
