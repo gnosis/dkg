@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"log"
 	"math/big"
-	"reflect"
 	"testing"
 )
 
@@ -62,6 +61,16 @@ func compareSecretSharingMessageEquality(
 	return true
 }
 
+func compareComplaintMessageEquality(
+	m1 *ComplaintMessage,
+	m2 *ComplaintMessage,
+) bool {
+	if m1.Accusor != m2.Accusor || m1.Accused != m2.Accused {
+		return false
+	}
+	return true
+}
+
 func TestEncodeDecodeSecretSharesMessage(t *testing.T) {
 	network := createNetworkBuffer(t)
 	From, To, S1x, S1y, S2x, S2y := getValidSecretSharingParams(t)
@@ -72,7 +81,7 @@ func TestEncodeDecodeSecretSharesMessage(t *testing.T) {
 	enc := gob.NewEncoder(&network)
 	err := enc.Encode(&message)
 	if err != nil {
-		log.Fatal("encode error:", err)
+		log.Fatal("encode error: ", err)
 	} else {
 		log.Println("encode success")
 	}
@@ -81,7 +90,7 @@ func TestEncodeDecodeSecretSharesMessage(t *testing.T) {
 	var decoded SecretSharesMessage
 	errd := dec.Decode(&decoded)
 	if errd != nil {
-		log.Fatal("decode error ", err)
+		log.Fatal("decode error: ", err)
 	} else {
 		log.Println("decode success")
 	}
@@ -95,11 +104,11 @@ func TestEncodeDecodeSecretSharesMessage(t *testing.T) {
 			network, message, decoded,
 		)
 	} else {
-		log.Println("successfully decoded message")
+		log.Println("successfully decoded secret sharing message")
 	}
 }
 
-func testEncodeDecodeComplaintMessage(t *testing.T) {
+func TestEncodeDecodeComplaintMessage(t *testing.T) {
 	network := createNetworkBuffer(t)
 	Accusor, Accused := getValidComplaintMessageParams(t)
 	message := ComplaintMessage{
@@ -109,7 +118,7 @@ func testEncodeDecodeComplaintMessage(t *testing.T) {
 	enc := gob.NewEncoder(&network)
 	err := enc.Encode(&message)
 	if err != nil {
-		log.Fatal("encode error:", err)
+		log.Fatal("encode error: ", err)
 	} else {
 		log.Println("encode success")
 	}
@@ -118,12 +127,12 @@ func testEncodeDecodeComplaintMessage(t *testing.T) {
 	var decoded ComplaintMessage
 	errd := dec.Decode(&decoded)
 	if errd != nil {
-		log.Fatal("decode error ", err)
+		log.Fatal("decode error: ", err)
 	} else {
 		log.Println("decode success")
 	}
 
-	if reflect.DeepEqual(&message, &decoded) {
+	if compareComplaintMessageEquality(&message, &decoded) {
 		t.Errorf(
 			"Could not decode message with \n"+
 				"network: %v\n"+
@@ -132,6 +141,6 @@ func testEncodeDecodeComplaintMessage(t *testing.T) {
 			network, message, decoded,
 		)
 	} else {
-		log.Println("successfully decoded message")
+		log.Println("successfully decoded complaint message")
 	}
 }
