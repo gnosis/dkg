@@ -10,3 +10,8 @@ type SecretSharesMessage struct {
 	S1x, S1y *big.Int
 	S2x, S2y *big.Int
 }
+
+type ComplaintMessage struct {
+	Accusor *big.Int
+	Accused *big.Int
+}
