@@ -58,9 +58,8 @@ func getValidPublicPointsMessageParams(t *testing.T) (
 		id, key, secretPoly1, secretPoly2,
 	)
 	if node == nil || err != nil {
-		log.Fatal("node construction failed")
+		log.Fatal("node construction failed: ", err)
 	}
-	log.Printf("node construction successful")
 
 	Points = node.VerificationPoints()
 	return
@@ -115,8 +114,6 @@ func TestEncodeDecodeSecretSharesMessage(t *testing.T) {
 	err := enc.Encode(&message)
 	if err != nil {
 		log.Fatal("encode error: ", err)
-	} else {
-		log.Println("encode success")
 	}
 
 	dec := gob.NewDecoder(&network)
@@ -124,8 +121,6 @@ func TestEncodeDecodeSecretSharesMessage(t *testing.T) {
 	errd := dec.Decode(&decoded)
 	if errd != nil {
 		log.Fatal("decode error: ", err)
-	} else {
-		log.Println("decode success")
 	}
 
 	if compareSecretSharingMessageEquality(&message, &decoded) {
@@ -152,8 +147,6 @@ func TestEncodeDecodeComplaintMessage(t *testing.T) {
 	err := enc.Encode(&message)
 	if err != nil {
 		log.Fatal("encode error: ", err)
-	} else {
-		log.Println("encode success")
 	}
 
 	dec := gob.NewDecoder(&network)
@@ -161,8 +154,6 @@ func TestEncodeDecodeComplaintMessage(t *testing.T) {
 	errd := dec.Decode(&decoded)
 	if errd != nil {
 		log.Fatal("decode error: ", err)
-	} else {
-		log.Println("decode success")
 	}
 
 	if compareComplaintMessageEquality(&message, &decoded) {
@@ -189,8 +180,6 @@ func TestEncodeDecodePublicPointsMessage(t *testing.T) {
 	err := enc.Encode(&message)
 	if err != nil {
 		log.Fatal("encode error:", err)
-	} else {
-		log.Println("encode success")
 	}
 
 	dec := gob.NewDecoder(&network)
@@ -198,8 +187,6 @@ func TestEncodeDecodePublicPointsMessage(t *testing.T) {
 	errd := dec.Decode(&decoded)
 	if errd != nil {
 		log.Fatal("decode error ", err)
-	} else {
-		log.Println("decode success")
 	}
 
 	if comparePublicPointsMessageEquality(&message, &decoded) {
