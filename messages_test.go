@@ -2,7 +2,9 @@ package dkg
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
+	"log"
 	"math/big"
 	"testing"
 )
@@ -81,22 +83,22 @@ func TestEncodeDecodeValidMessage(t *testing.T) {
 		From, To, S1x, S1y, S2x, S2y,
 	)
 
-	// enc := gob.NewEncoder(&network)
-	// err := enc.Encode(message)
-	// if err != nil {
-	// 	log.Fatal("encode error:", err)
-	// } else {
-	// 	log.Println("encode success")
-	// }
+	enc := gob.NewEncoder(&network)
+	err := enc.Encode(message)
+	if err != nil {
+		log.Fatal("encode error:", err)
+	} else {
+		log.Println("encode success")
+	}
 
-	// dec := gob.NewDecoder(&network)
-	// var decoded SecretSharesMessage
-	// errd := dec.Decode(&decoded)
-	// if errd != nil {
-	// 	log.Fatal("decode error ", err)
-	// } else {
-	// 	log.Println("decode success")
-	// }
+	dec := gob.NewDecoder(&network)
+	var decoded SecretSharesMessage
+	errd := dec.Decode(&decoded)
+	if errd != nil {
+		log.Fatal("decode error ", err)
+	} else {
+		log.Println("decode success")
+	}
 
 	encodedRes := EncodeSecretSharesMessage(&network, message)
 	if !encodedRes {
