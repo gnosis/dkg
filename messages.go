@@ -67,15 +67,3 @@ func DecodeSecretSharesMessage(
 		return &decoded
 	}
 }
-
-// func broadCastMessage(message Message) bool {
-// 	//ToDO
-// }
-
-// func sendMessage(receiver int, message Message) bool {
-// 	//ToDO
-// }
-
-// func receiveMessage(message Message) bool {
-// 	//ToDO
-// }
