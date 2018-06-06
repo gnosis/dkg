@@ -15,3 +15,8 @@ type ComplaintMessage struct {
 	Accusor *big.Int
 	Accused *big.Int
 }
+
+type PublicPointsMessage struct {
+	Player *big.Int
+	Points PointTuple
+}
