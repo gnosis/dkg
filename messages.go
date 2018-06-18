@@ -20,8 +20,3 @@ type PublicPointsMessage struct {
 	Player *big.Int
 	Points PointTuple
 }
-
-// func (t *SecretSharesMessage) Print(args *int, reply *bool) error {
-// 	*reply = true
-// 	return nil
-// }
