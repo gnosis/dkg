@@ -6,6 +6,8 @@ import "time"
 import "crypto/ecdsa"
 import "crypto/elliptic"
 import "math/big"
+import "reflect"
+import "log"
 
 type ScalarPolynomial []*big.Int
 
@@ -108,4 +110,51 @@ func (n *node) VerificationPoints() pointTuple {
 		vpts[i].X, vpts[i].Y = n.curve.Add(ax, ay, bx, by)
 	}
 	return vpts
+}
+
+type participant struct {
+	id                 *big.Int
+	key                ecdsa.PublicKey
+	secretShare1       *big.Int
+	secretShare2       *big.Int
+	verificationPoints pointTuple
+	private            chan Message
+}
+
+func (n *node) getParticipantByAddress(address *big.Int) (p participant, _ error) {
+	for _, participant := range n.otherParticipants {
+		if participant.id == address {
+			return
+		}
+	}
+	return
+}
+
+func (n *node) ProcessSecretShareVerification(address *big.Int) {
+	// // alice's address
+	// ownAddress := n.id
+
+	// bob's address
+	p, err := n.getParticipantByAddress(address)
+	if err != nil {
+		log.Fatal("participant not in node list")
+	}
+
+	// // bob's shares
+	// share1 := p.secretShare1
+	// share2 := p.secretShare2
+
+	// bob's vpts
+	// bvpts (secp256k1.G * share1) + (G2, share2)
+	bvpts := p.verificationPoints
+
+	// Alice's vpts
+	// avpts = functools.reduce()
+	avpts := n.VerificationPoints()
+
+	if reflect.DeepEqual(bvpts, avpts) {
+		return
+	}
+	// else fire complaint message
+	// participant.get_or_create_complaint_by_complainer_address(ownAddress)
 }
