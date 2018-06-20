@@ -1,13 +1,15 @@
 package dkg
 
-import "errors"
-import "hash"
-import "time"
-import "crypto/ecdsa"
-import "crypto/elliptic"
-import "math/big"
-import "reflect"
-import "log"
+import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"errors"
+	"hash"
+	"log"
+	"math/big"
+	"time"
+	// "github.com/ethereum/go-ethereum/crypto/secp256k1"
+)
 
 type ScalarPolynomial []*big.Int
 
@@ -121,7 +123,7 @@ type participant struct {
 	private            chan Message
 }
 
-func (n *node) getParticipantByAddress(address *big.Int) (p participant, _ error) {
+func (n *node) getParticipantByAddress(address *big.Int) (p *participant, _ error) {
 	for _, participant := range n.otherParticipants {
 		if participant.id == address {
 			return
@@ -130,29 +132,56 @@ func (n *node) getParticipantByAddress(address *big.Int) (p participant, _ error
 	return
 }
 
+func comparePointTuples(a, b pointTuple) bool {
+	for i, pointA := range a {
+		pointB := b[i]
+		if pointA.X != pointB.X || pointA.Y != pointB.X {
+			return false
+		}
+	}
+	return true
+}
+
+// Verification step in dkg protocol
 func (n *node) ProcessSecretShareVerification(address *big.Int) {
-	// // alice's address
+	// alice's address
 	// ownAddress := n.id
 
-	// bob's address
+	// bob's node
 	p, err := n.getParticipantByAddress(address)
-	if err != nil {
+	if p == nil || err != nil {
 		log.Fatal("participant not in node list")
 	}
 
-	// // bob's shares
-	// share1 := p.secretShare1
-	// share2 := p.secretShare2
+	// bob's shares
+	share1 := p.secretShare1
+	share2 := p.secretShare2
 
-	// bob's vpts
-	// bvpts (secp256k1.G * share1) + (G2, share2)
-	bvpts := p.verificationPoints
+	// verify bob's shares
+	// = (share1 * G1) + (share2 * G2)
+	ax, ay := n.curve.ScalarBaseMult(share1.Bytes())
+	bx, by := n.curve.ScalarMult(n.g2x, n.g2y, share2.Bytes())
+	vxlhs, vylhs := n.curve.Add(ax, ay, bx, by)
+	vlhs := pointTuple{{vxlhs, vylhs}}
 
 	// Alice's vpts
-	// avpts = functools.reduce()
-	avpts := n.VerificationPoints()
+	// = SUM_k=0^t (Pi^k * p.verificationPoints)
+	// vrhs := make(pointTuple, len(p.verificationPoints))
+	var vxrhs *big.Int
+	var vyrhs *big.Int
 
-	if reflect.DeepEqual(bvpts, avpts) {
+	// secp256k1 base point order
+	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
+
+	for i, points := range p.verificationPoints {
+		var pow *big.Int
+		pow.Exp(n.id, big.NewInt(int64(i)), n.curve.Params().N)
+		px, py := n.curve.ScalarMult(points.X, points.Y, pow.Bytes())
+		vxrhs, vyrhs = n.curve.Add(vxrhs, vyrhs, px, py)
+	}
+	vrhs := pointTuple{{vxrhs, vyrhs}}
+
+	if comparePointTuples(vlhs, vrhs) {
 		return
 	}
 	// else fire complaint message
