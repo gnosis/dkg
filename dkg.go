@@ -186,3 +186,22 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) bool {
 	// else fire complaint message
 	// participant.get_or_create_complaint_by_complainer_address(ownAddress)
 }
+
+func (n *node) EvaluatePolynomials(secretPoly1 ScalarPolynomial, secretPoly2 ScalarPolynomial, id *big.Int) (*big.Int, *big.Int) {
+	var share1 *big.Int
+	for i, scalar := range secretPoly1 {
+		var res *big.Int
+		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
+		res.Mul(scalar, res)
+		share1 = share1.Add(share1, res)
+	}
+
+	var share2 *big.Int
+	for i, scalar := range secretPoly2 {
+		var res *big.Int
+		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
+		res.Mul(scalar, res)
+		share2 = share2.Add(share2, res)
+	}
+	return share1, share2
+}
