@@ -123,9 +123,9 @@ type participant struct {
 	private            chan Message
 }
 
-func (n *node) getParticipantByAddress(address *big.Int) (p *participant, _ error) {
+func (n *node) getParticipantById(id *big.Int) (p *participant, _ error) {
 	for _, participant := range n.otherParticipants {
-		if participant.id == address {
+		if participant.id == id {
 			return
 		}
 	}
@@ -143,12 +143,12 @@ func comparePointTuples(a, b pointTuple) bool {
 }
 
 // Verification step in dkg protocol
-func (n *node) ProcessSecretShareVerification(address *big.Int) {
+func (n *node) ProcessSecretShareVerification(id *big.Int) bool {
 	// alice's address
-	// ownAddress := n.id
+	ownAddress := n.id
 
 	// bob's node
-	p, err := n.getParticipantByAddress(address)
+	p, err := n.getParticipantById(id)
 	if p == nil || err != nil {
 		log.Fatal("participant not in node list")
 	}
@@ -157,33 +157,32 @@ func (n *node) ProcessSecretShareVerification(address *big.Int) {
 	share1 := p.secretShare1
 	share2 := p.secretShare2
 
-	// verify bob's shares
-	// = (share1 * G1) + (share2 * G2)
+	// verify left hand side
 	ax, ay := n.curve.ScalarBaseMult(share1.Bytes())
 	bx, by := n.curve.ScalarMult(n.g2x, n.g2y, share2.Bytes())
 	vxlhs, vylhs := n.curve.Add(ax, ay, bx, by)
 	vlhs := pointTuple{{vxlhs, vylhs}}
 
-	// Alice's vpts
-	// = SUM_k=0^t (Pi^k * p.verificationPoints)
-	// vrhs := make(pointTuple, len(p.verificationPoints))
+	// bob's verification points
 	var vxrhs *big.Int
 	var vyrhs *big.Int
 
 	// secp256k1 base point order
 	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
 
-	for i, points := range p.verificationPoints {
+	// verify right hand side
+	for i, point := range p.verificationPoints {
 		var pow *big.Int
-		pow.Exp(n.id, big.NewInt(int64(i)), n.curve.Params().N)
-		px, py := n.curve.ScalarMult(points.X, points.Y, pow.Bytes())
+		pow.Exp(ownAddress, big.NewInt(int64(i)), n.curve.Params().N)
+		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
 		vxrhs, vyrhs = n.curve.Add(vxrhs, vyrhs, px, py)
 	}
 	vrhs := pointTuple{{vxrhs, vyrhs}}
 
 	if comparePointTuples(vlhs, vrhs) {
-		return
+		return true
 	}
+	return false
 	// else fire complaint message
 	// participant.get_or_create_complaint_by_complainer_address(ownAddress)
 }
