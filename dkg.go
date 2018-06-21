@@ -1,11 +1,15 @@
 package dkg
 
-import "errors"
-import "hash"
-import "time"
-import "crypto/ecdsa"
-import "crypto/elliptic"
-import "math/big"
+import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"errors"
+	"hash"
+	"log"
+	"math/big"
+	"time"
+	// "github.com/ethereum/go-ethereum/crypto/secp256k1"
+)
 
 type ScalarPolynomial []*big.Int
 
@@ -108,4 +112,77 @@ func (n *node) VerificationPoints() pointTuple {
 		vpts[i].X, vpts[i].Y = n.curve.Add(ax, ay, bx, by)
 	}
 	return vpts
+}
+
+type participant struct {
+	id                 *big.Int
+	key                ecdsa.PublicKey
+	secretShare1       *big.Int
+	secretShare2       *big.Int
+	verificationPoints pointTuple
+	private            chan Message
+}
+
+func (n *node) getParticipantById(id *big.Int) (p *participant, _ error) {
+	for _, participant := range n.otherParticipants {
+		if participant.id == id {
+			return
+		}
+	}
+	return
+}
+
+func comparePointTuples(a, b pointTuple) bool {
+	for i, pointA := range a {
+		pointB := b[i]
+		if pointA.X != pointB.X || pointA.Y != pointB.X {
+			return false
+		}
+	}
+	return true
+}
+
+// Verification step in dkg protocol
+func (n *node) ProcessSecretShareVerification(id *big.Int) bool {
+	// alice's address
+	ownAddress := n.id
+
+	// bob's node
+	p, err := n.getParticipantById(id)
+	if p == nil || err != nil {
+		log.Fatal("participant not in node list")
+	}
+
+	// bob's shares
+	share1 := p.secretShare1
+	share2 := p.secretShare2
+
+	// verify left hand side
+	ax, ay := n.curve.ScalarBaseMult(share1.Bytes())
+	bx, by := n.curve.ScalarMult(n.g2x, n.g2y, share2.Bytes())
+	vxlhs, vylhs := n.curve.Add(ax, ay, bx, by)
+	vlhs := pointTuple{{vxlhs, vylhs}}
+
+	// bob's verification points
+	var vxrhs *big.Int
+	var vyrhs *big.Int
+
+	// secp256k1 base point order
+	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
+
+	// verify right hand side
+	for i, point := range p.verificationPoints {
+		var pow *big.Int
+		pow.Exp(ownAddress, big.NewInt(int64(i)), n.curve.Params().N)
+		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
+		vxrhs, vyrhs = n.curve.Add(vxrhs, vyrhs, px, py)
+	}
+	vrhs := pointTuple{{vxrhs, vyrhs}}
+
+	if comparePointTuples(vlhs, vrhs) {
+		return true
+	}
+	return false
+	// else fire complaint message
+	// participant.get_or_create_complaint_by_complainer_address(ownAddress)
 }

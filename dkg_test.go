@@ -197,3 +197,29 @@ func TestValidNode(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessSecretShareVerification(t *testing.T) {
+	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+
+	node, err := NewNode(
+		curve, hash, g2x, g2y, zkParam, timeout,
+		id, key, secretPoly1, secretPoly2,
+	)
+
+	if node == nil || err != nil {
+		t.Errorf(
+			"Could not create new node with params:\n"+
+				"curve: %v\n"+
+				"g2: %v\n"+
+				"zkparam: %v\n"+
+				"id: %v\n"+
+				"secretPoly1: %v\n"+
+				"secretPoly2: %v\n"+
+				"%v\n",
+			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, secretPoly1, secretPoly2, err,
+		)
+	}
+
+	// fmt.Println(node.TestProcessSecretShareVerification(node))
+
+}
