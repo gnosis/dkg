@@ -192,16 +192,18 @@ func (n *node) EvaluatePolynomials(secretPoly1 ScalarPolynomial, secretPoly2 Sca
 	for i, scalar := range secretPoly1 {
 		var res *big.Int
 		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
-		res.Mul(scalar, res)
-		share1 = share1.Add(share1, res)
+		res.Mul(res, scalar)
+		share1.Add(res, share1)
 	}
+	share1.Mod(share1, n.curve.Params().N)
 
 	var share2 *big.Int
 	for i, scalar := range secretPoly2 {
 		var res *big.Int
 		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
-		res.Mul(scalar, res)
-		share2 = share2.Add(share2, res)
+		res.Mul(res, scalar)
+		share2.Add(res, share2)
 	}
+	share2.Mod(share2, n.curve.Params().N)
 	return share1, share2
 }
