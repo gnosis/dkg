@@ -205,5 +205,22 @@ func (n *node) EvaluatePolynomials(secretPoly1 ScalarPolynomial, secretPoly2 Sca
 		share2.Add(res, share2)
 	}
 	share2.Mod(share2, n.curve.Params().N)
+
 	return share1, share2
+}
+
+func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) pointTuple {
+	if len(poly1) != len(poly2) {
+		log.Fatal("polynomial lengths do not match")
+	}
+
+	var sharesx *big.Int
+	var sharesy *big.Int
+	for i, scalar := range poly1 {
+		curve1x, curve1y := n.curve.ScalarBaseMult(big.NewInt(int64(i)).Bytes())
+		curve2x, curve2y := n.curve.ScalarMult(n.g2x, n.g2y, scalar.Bytes())
+		sharesx, sharesy = n.curve.Add(curve1x, curve1y, curve2x, curve2y)
+	}
+	return pointTuple{{sharesx, sharesy}}
+
 }
