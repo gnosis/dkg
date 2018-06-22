@@ -46,7 +46,7 @@ type node struct {
 		key                ecdsa.PublicKey
 		secretShare1       *big.Int
 		secretShare2       *big.Int
-		verificationPoints pointTuple
+		verificationPoints PointTuple
 
 		private chan Message
 	}
@@ -100,11 +100,11 @@ func (n *node) PublicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
 }
 
-type pointTuple []struct{ X, Y *big.Int }
+type PointTuple []struct{ X, Y *big.Int }
 
-func (n *node) VerificationPoints() pointTuple {
+func (n *node) VerificationPoints() PointTuple {
 	// [c1 * G + c2 * G2 for c1, c2 in zip(spoly1, spoly2)]
-	vpts := make(pointTuple, len(n.secretPoly1))
+	vpts := make(PointTuple, len(n.secretPoly1))
 	for i, c1 := range n.secretPoly1 {
 		c2 := n.secretPoly2[i]
 		ax, ay := n.curve.ScalarBaseMult(c1.Bytes())
@@ -114,16 +114,16 @@ func (n *node) VerificationPoints() pointTuple {
 	return vpts
 }
 
-type participant struct {
+type Participant struct {
 	id                 *big.Int
 	key                ecdsa.PublicKey
 	secretShare1       *big.Int
 	secretShare2       *big.Int
-	verificationPoints pointTuple
+	verificationPoints PointTuple
 	private            chan Message
 }
 
-func (n *node) getParticipantById(id *big.Int) (p *participant, _ error) {
+func (n *node) getParticipantById(id *big.Int) (p *Participant, _ error) {
 	for _, participant := range n.otherParticipants {
 		if participant.id == id {
 			return
@@ -132,7 +132,7 @@ func (n *node) getParticipantById(id *big.Int) (p *participant, _ error) {
 	return
 }
 
-func comparePointTuples(a, b pointTuple) bool {
+func comparePointTuples(a, b PointTuple) bool {
 	for i, pointA := range a {
 		pointB := b[i]
 		if pointA.X != pointB.X || pointA.Y != pointB.X {
@@ -143,14 +143,14 @@ func comparePointTuples(a, b pointTuple) bool {
 }
 
 // Verification step in dkg protocol
-func (n *node) ProcessSecretShareVerification(id *big.Int) bool {
+func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	// alice's address
 	ownAddress := n.id
 
 	// bob's node
 	p, err := n.getParticipantById(id)
 	if p == nil || err != nil {
-		log.Fatal("participant not in node list")
+		return false, ParticipantNotFoundError{n.id, id}
 	}
 
 	// bob's shares
@@ -161,7 +161,7 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) bool {
 	ax, ay := n.curve.ScalarBaseMult(share1.Bytes())
 	bx, by := n.curve.ScalarMult(n.g2x, n.g2y, share2.Bytes())
 	vxlhs, vylhs := n.curve.Add(ax, ay, bx, by)
-	vlhs := pointTuple{{vxlhs, vylhs}}
+	vlhs := PointTuple{{vxlhs, vylhs}}
 
 	// bob's verification points
 	var vxrhs *big.Int
@@ -177,17 +177,21 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) bool {
 		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
 		vxrhs, vyrhs = n.curve.Add(vxrhs, vyrhs, px, py)
 	}
-	vrhs := pointTuple{{vxrhs, vyrhs}}
+	vrhs := PointTuple{{vxrhs, vyrhs}}
 
 	if comparePointTuples(vlhs, vrhs) {
-		return true
+		return true, nil
 	}
-	return false
 	// else fire complaint message
 	// participant.get_or_create_complaint_by_complainer_address(ownAddress)
+	return false, nil
+
 }
 
-func (n *node) EvaluatePolynomials(secretPoly1 ScalarPolynomial, secretPoly2 ScalarPolynomial, id *big.Int) (*big.Int, *big.Int) {
+func (n *node) EvaluatePolynomials(id *big.Int) (*big.Int, *big.Int) {
+	secretPoly1 := n.secretPoly1
+	secretPoly2 := n.secretPoly2
+
 	var share1 *big.Int
 	for i, scalar := range secretPoly1 {
 		var res *big.Int
@@ -209,7 +213,7 @@ func (n *node) EvaluatePolynomials(secretPoly1 ScalarPolynomial, secretPoly2 Sca
 	return share1, share2
 }
 
-func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) pointTuple {
+func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 	if len(poly1) != len(poly2) {
 		log.Fatal("polynomial lengths do not match")
 	}
@@ -221,6 +225,6 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) pointTuple {
 		curve2x, curve2y := n.curve.ScalarMult(n.g2x, n.g2y, scalar.Bytes())
 		sharesx, sharesy = n.curve.Add(curve1x, curve1y, curve2x, curve2y)
 	}
-	return pointTuple{{sharesx, sharesy}}
+	return PointTuple{{sharesx, sharesy}}
 
 }

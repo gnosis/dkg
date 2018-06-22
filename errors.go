@@ -44,3 +44,13 @@ func (e InvalidCurvePointError) Error() string {
 		elliptic.Marshal(e.curve, e.g2x, e.g2y),
 	)
 }
+
+type ParticipantNotFoundError struct {
+	nodeId, participantId *big.Int
+}
+
+func (e ParticipantNotFoundError) Error() string {
+	return fmt.Sprintf("verification: participant: %v not in node: %v nodelist",
+		e.nodeId, e.participantId,
+	)
+}
