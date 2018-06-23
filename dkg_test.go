@@ -234,11 +234,19 @@ func TestProcessSecretShareVerification(t *testing.T) {
 	pubx, puby := curve.ScalarBaseMult(privd.Bytes())
 	validPubKey := ecdsa.PublicKey{curve, pubx, puby}
 
+	// add participant to node list with invalid shares
 	invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
 	invalidPoints := PointTuple{{big.NewInt(9), big.NewInt(9)}}
 	addParticipantToNodeList(
 		node1, id, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
 	)
+
+	// // add participant to node list with valid shares
+	// validShare1, validshare2 := big.NewInt(1), big.NewInt(1)
+	// validPoints := PointTuple({+big.NewInt(1), big.NewInt(1)})
+	// addParticipantToNodeList(
+	// 	node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
+	// )
 
 	if node1 == nil || err != nil {
 		t.Errorf(
@@ -281,32 +289,75 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		})
 
 		// t.Run("Participant in node list with valid points", func(t *testing.T) {
-
+		// 	verified, _ := node1.ProcessSecretShareVerification(validNodeID)
+		// 	if !verified {
+		// 		t.Errorf(
+		// 			"Unable to verify a participant with valid shares:\n"+
+		// 				"node id: %v\n"+
+		// 				"participant id: %v\n"+
+		// 				"valid share1: %v\n"+
+		// 				"valid share2: %v\n",
+		// 			node1.id, validNodeID, validShare1, validShare2,
+		// 		)
+		// 	}
 		// })
 
 	}
 }
 
-// func TestEvaluatePolynomials(t *testing.T) {
-// 	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+func TestEvaluatePolynomials(t *testing.T) {
+	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
-// 	node, err := NewNode(
-// 		curve, hash, g2x, g2y, zkParam, timeout,
-// 		id, key, secretPoly1, secretPoly2,
-// 	)
+	node, err := NewNode(
+		curve, hash, g2x, g2y, zkParam, timeout,
+		id, key, secretPoly1, secretPoly2,
+	)
 
-// 	if node == nil || err != nil {
-// 		t.Errorf(
-// 			"Could not create new node with params:\n"+
-// 				"curve: %v\n"+
-// 				"g2: %v\n"+
-// 				"zkparam:%v\n"+
-// 				"id: %v\n"+
-// 				"secretPoly1: %v\n"+
-// 				"secretPoly2: %v\n"+
-// 				"%v\n",
-// 			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, secretPoly1, secretPoly2, err,
-// 		)
-// 	}
+	// validID := big.NewInt(1)
 
-// }
+	// invalidID := big.NewInt(9)
+
+	if node == nil || err != nil {
+		t.Errorf(
+			"Could not create new node with params:\n"+
+				"curve: %v\n"+
+				"g2: %v\n"+
+				"zkparam:%v\n"+
+				"id: %v\n"+
+				"secretPoly1: %v\n"+
+				"secretPoly2: %v\n"+
+				"%v\n",
+			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, secretPoly1, secretPoly2, err,
+		)
+	} else {
+		// t.Run("invalid ID returns incorrect shares", func(t *testing.T) {
+		// 	invalidShare1, invalidShare2 := node.EvaluatePolynomials(invalidID)
+		// 	if (invalidShare1 is incorrect...) {
+		// 		t.Errorf(
+		// 			"invalid id should have invalid shares:\n"
+		// 				"nodeID: %v\n"+
+		// 				"invalidID: %v\n"+
+		// 				"invalid share1: %v\n"+
+		// 				"invalid share2: %v\n",
+		// 			node.id, invalidID, invalidShare1, invalidShare2,
+		// 		)
+
+		// 	}
+		// })
+
+		// t.Run("Valid ID returns valid shares", func(t *testing.T) {
+		// 	validShare1, validShare2 := node.EvaluatePolynomials(validID)
+		// 	if (validShares are invalid...) {
+		// 		t.Errorf(
+		// 			"valid id should have valid shares:\n"+
+		// 				"nodeID: %v\n"+
+		// 				"validID: %v\n"+
+		// 				"valid share1: %v\n"+
+		// 				"valid share2: %v\n",
+		// 			node.id, validID, validShare1, validShare2,
+		// 		)
+		// 	}
+		// })
+	}
+
+}
