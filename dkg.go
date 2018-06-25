@@ -124,13 +124,21 @@ type Participant struct {
 	private            chan Message
 }
 
-func (n *node) getParticipantById(id *big.Int) (p *Participant, _ error) {
+func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
 	for _, participant := range n.otherParticipants {
 		if participant.id == id {
-			return
+			matchingParticipant := Participant{
+				participant.id,
+				participant.key,
+				participant.secretShare1,
+				participant.secretShare2,
+				participant.verificationPoints,
+				participant.private,
+			}
+			return &matchingParticipant, nil
 		}
 	}
-	return
+	return nil, ParticipantNotFoundError{n.id, id}
 }
 
 func comparePointTuples(a, b PointTuple) bool {
@@ -149,9 +157,9 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	ownAddress := n.id
 
 	// bob's node
-	p, err := n.getParticipantById(id)
+	p, err := n.getParticipantByID(id)
 	if p == nil || err != nil {
-		return false, ParticipantNotFoundError{n.id, id}
+		return false, err
 	}
 
 	// bob's shares
@@ -165,20 +173,19 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	vlhs := PointTuple{{vxlhs, vylhs}}
 
 	// bob's verification points
-	var vxrhs *big.Int
-	var vyrhs *big.Int
+	vrhs := make(PointTuple, len(n.secretPoly1))
 
 	// secp256k1 base point order
 	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
 
 	// verify right hand side
 	for i, point := range p.verificationPoints {
-		var pow *big.Int
+		vrhs[i].X, vrhs[i].Y = big.NewInt(0), big.NewInt(0)
+		var pow big.Int
 		pow.Exp(ownAddress, big.NewInt(int64(i)), n.curve.Params().N)
 		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
-		vxrhs, vyrhs = n.curve.Add(vxrhs, vyrhs, px, py)
+		vrhs[i].X, vrhs[i].Y = n.curve.Add(vrhs[i].X, vrhs[i].Y, px, py)
 	}
-	vrhs := PointTuple{{vxrhs, vyrhs}}
 
 	if comparePointTuples(vlhs, vrhs) {
 		return true, nil
@@ -189,29 +196,28 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 
 }
 
-func (n *node) EvaluatePolynomials(id *big.Int) (*big.Int, *big.Int) {
+func (n *node) EvaluatePolynomials() (*big.Int, *big.Int) {
 	secretPoly1 := n.secretPoly1
 	secretPoly2 := n.secretPoly2
+	id := n.id
 
-	var share1 *big.Int
+	var share1 big.Int
 	for i, scalar := range secretPoly1 {
-		var res *big.Int
-		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
-		res.Mul(res, scalar)
-		share1.Add(res, share1)
+		var res big.Int
+		res.Exp(id, big.NewInt(int64(i+1)), n.curve.Params().N)
+		res.Mul(&res, scalar)
+		share1.Add(&res, &share1)
 	}
-	share1.Mod(share1, n.curve.Params().N)
-
-	var share2 *big.Int
+	share1.Mod(&share1, n.curve.Params().N)
+	var share2 big.Int
 	for i, scalar := range secretPoly2 {
-		var res *big.Int
-		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
-		res.Mul(res, scalar)
-		share2.Add(res, share2)
+		var res big.Int
+		res.Exp(id, big.NewInt(int64(i+1)), n.curve.Params().N)
+		res.Mul(&res, scalar)
+		share2.Add(&res, &share2)
 	}
-	share2.Mod(share2, n.curve.Params().N)
-
-	return share1, share2
+	share2.Mod(&share2, n.curve.Params().N)
+	return &share1, &share2
 }
 
 func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {

@@ -237,14 +237,14 @@ func TestProcessSecretShareVerification(t *testing.T) {
 	// add participant to node list with invalid shares
 	invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
 	invalidPoints := PointTuple{{big.NewInt(9), big.NewInt(9)}}
-	addParticipantToNodeList(
+	node2 := addParticipantToNodeList(
 		node1, id, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
 	)
 
 	// // add participant to node list with valid shares
-	// validShare1, validshare2 := big.NewInt(1), big.NewInt(1)
-	// validPoints := PointTuple({+big.NewInt(1), big.NewInt(1)})
-	// addParticipantToNodeList(
+	// validShare1, validShare2 := node1.EvaluatePolynomials()
+	// validPoints := node1.VerificationPoints()
+	// node3 := addParticipantToNodeList(
 	// 	node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
 	// )
 
@@ -275,7 +275,7 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		})
 
 		t.Run("Participant in node list with invalid shares", func(t *testing.T) {
-			verified, _ := node1.ProcessSecretShareVerification(validNodeID)
+			verified, _ := node2.ProcessSecretShareVerification(id)
 			if verified {
 				t.Errorf(
 					"Verified a participant with invalid shares:\n"+
@@ -283,13 +283,13 @@ func TestProcessSecretShareVerification(t *testing.T) {
 						"participant id: %v\n"+
 						"invalid share1: %v\n"+
 						"invalid share2: %v\n",
-					node1.id, validNodeID, invalidShare1, invalidShare2,
+					node2.id, validNodeID, invalidShare1, invalidShare2,
 				)
 			}
 		})
 
 		// t.Run("Participant in node list with valid points", func(t *testing.T) {
-		// 	verified, _ := node1.ProcessSecretShareVerification(validNodeID)
+		// 	verified, _ := node3.ProcessSecretShareVerification(validNodeID)
 		// 	if !verified {
 		// 		t.Errorf(
 		// 			"Unable to verify a participant with valid shares:\n"+
@@ -297,7 +297,7 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		// 				"participant id: %v\n"+
 		// 				"valid share1: %v\n"+
 		// 				"valid share2: %v\n",
-		// 			node1.id, validNodeID, validShare1, validShare2,
+		// 			node3.id, validNodeID, validShare1, validShare2,
 		// 		)
 		// 	}
 		// })
