@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/sha512"
 	"encoding/base64"
+	"fmt"
 	"hash"
 	"math/big"
 	"reflect"
@@ -278,29 +279,29 @@ func TestProcessSecretShareVerification(t *testing.T) {
 			}
 		})
 
-		t.Run("Participant in node list with valid points", func(t *testing.T) {
-			validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
-			validNodeID := big.NewInt(11111)
+		// t.Run("Participant in node list with valid points", func(t *testing.T) {
+		// 	validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
+		// 	validNodeID := big.NewInt(11111)
 
-			// add participant to node list with valid shares
-			validShare1, validShare2 := node1.EvaluatePolynomials()
-			validPoints := node1.VerificationPoints()
-			node3 := addParticipantToNodeList(
-				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
-			)
+		// 	// add participant to node list with valid shares
+		// 	validShare1, validShare2 := node1.EvaluatePolynomials()
+		// 	validPoints := node1.VerificationPoints()
+		// 	node3 := addParticipantToNodeList(
+		// 		node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
+		// 	)
 
-			verified, _ := node3.ProcessSecretShareVerification(validNodeID)
-			if !verified {
-				t.Errorf(
-					"Unable to verify a participant with valid shares:\n"+
-						"node id: %v\n"+
-						"participant id: %v\n"+
-						"valid share1: %v\n"+
-						"valid share2: %v\n",
-					node3.id, validNodeID, validShare1, validShare2,
-				)
-			}
-		})
+		// 	verified, _ := node3.ProcessSecretShareVerification(validNodeID)
+		// 	if !verified {
+		// 		t.Errorf(
+		// 			"Unable to verify a participant with valid shares:\n"+
+		// 				"node id: %v\n"+
+		// 				"participant id: %v\n"+
+		// 				"valid share1: %v\n"+
+		// 				"valid share2: %v\n",
+		// 			node3.id, validNodeID, validShare1, validShare2,
+		// 		)
+		// 	}
+		// })
 
 	}
 }
@@ -313,7 +314,8 @@ func TestEvaluatePolynomials(t *testing.T) {
 		id, key, secretPoly1, secretPoly2,
 	)
 
-	// validID := big.NewInt(1)
+	share1, share2 := node.EvaluatePolynomials()
+	fmt.Println(share1, share2)
 
 	// invalidID := big.NewInt(9)
 
@@ -345,19 +347,21 @@ func TestEvaluatePolynomials(t *testing.T) {
 		// 	}
 		// })
 
-		// t.Run("Valid ID returns valid shares", func(t *testing.T) {
-		// 	validShare1, validShare2 := node.EvaluatePolynomials(validID)
-		// 	if (validShares are invalid...) {
-		// 		t.Errorf(
-		// 			"valid id should have valid shares:\n"+
-		// 				"nodeID: %v\n"+
-		// 				"validID: %v\n"+
-		// 				"valid share1: %v\n"+
-		// 				"valid share2: %v\n",
-		// 			node.id, validID, validShare1, validShare2,
-		// 		)
-		// 	}
-		// })
+		t.Run("node returns correct shares", func(t *testing.T) {
+			correctShare1, correctShare2 := big.NewInt(7525921076266), big.NewInt(15051994576250)
+			share1, share2 := node.EvaluatePolynomials()
+			if share1.Uint64() != correctShare1.Uint64() || share2.Uint64() != correctShare2.Uint64() {
+				t.Errorf(
+					"node %v should have correct shares:\n"+
+						"correct share1: %v\n"+
+						"correct share2: %v\n"+
+						"but received:\n"+
+						"incorrect share1: %v\n"+
+						"incorrect share2: %v\n",
+					node.id, correctShare1, correctShare2, share1, share2,
+				)
+			}
+		})
 	}
 
 }

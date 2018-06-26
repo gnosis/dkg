@@ -208,7 +208,7 @@ func (n *node) EvaluatePolynomials() (*big.Int, *big.Int) {
 	var share1 big.Int
 	for i, scalar := range secretPoly1 {
 		var res big.Int
-		res.Exp(id, big.NewInt(int64(i+1)), n.curve.Params().N)
+		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
 		res.Mul(&res, scalar)
 		share1.Add(&res, &share1)
 	}
@@ -216,7 +216,7 @@ func (n *node) EvaluatePolynomials() (*big.Int, *big.Int) {
 	var share2 big.Int
 	for i, scalar := range secretPoly2 {
 		var res big.Int
-		res.Exp(id, big.NewInt(int64(i+1)), n.curve.Params().N)
+		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
 		res.Mul(&res, scalar)
 		share2.Add(&res, &share2)
 	}
