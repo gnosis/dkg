@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"log"
@@ -144,6 +145,8 @@ func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
 func comparePointTuples(a, b PointTuple) bool {
 	for i, pointA := range a {
 		pointB := b[i]
+		fmt.Println("pointA: ", pointA)
+		fmt.Println("pointB: ", pointB)
 		if pointA.X != pointB.X || pointA.Y != pointB.X {
 			return false
 		}
@@ -178,13 +181,14 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	// secp256k1 base point order
 	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
 
+	// vxrhs, vyrhs := big.NewInt(0), big.NewInt(0)
+	vrhs[0].X, vrhs[0].Y = big.NewInt(0), big.NewInt(0)
 	// verify right hand side
 	for i, point := range p.verificationPoints {
-		vrhs[i].X, vrhs[i].Y = big.NewInt(0), big.NewInt(0)
 		var pow big.Int
 		pow.Exp(ownAddress, big.NewInt(int64(i)), n.curve.Params().N)
 		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
-		vrhs[i].X, vrhs[i].Y = n.curve.Add(vrhs[i].X, vrhs[i].Y, px, py)
+		vrhs[0].X, vrhs[0].Y = n.curve.Add(vrhs[0].X, vrhs[0].Y, px, py)
 	}
 
 	if comparePointTuples(vlhs, vrhs) {

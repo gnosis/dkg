@@ -226,28 +226,6 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		id, key, secretPoly1, secretPoly2,
 	)
 
-	fakeNodeID := big.NewInt(99999)
-
-	validNodeID := big.NewInt(11111)
-
-	privd := big.NewInt(1234567890)
-	pubx, puby := curve.ScalarBaseMult(privd.Bytes())
-	validPubKey := ecdsa.PublicKey{curve, pubx, puby}
-
-	// add participant to node list with invalid shares
-	invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
-	invalidPoints := PointTuple{{big.NewInt(9), big.NewInt(9)}}
-	node2 := addParticipantToNodeList(
-		node1, id, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
-	)
-
-	// // add participant to node list with valid shares
-	// validShare1, validShare2 := node1.EvaluatePolynomials()
-	// validPoints := node1.VerificationPoints()
-	// node3 := addParticipantToNodeList(
-	// 	node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
-	// )
-
 	if node1 == nil || err != nil {
 		t.Errorf(
 			"Could not create new node with params:\n"+
@@ -262,6 +240,8 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		)
 	} else {
 		t.Run("Participant not in node list", func(t *testing.T) {
+			fakeNodeID := big.NewInt(99999)
+
 			verified, err := node1.ProcessSecretShareVerification(fakeNodeID)
 			if verified || err == nil {
 				t.Errorf(
@@ -275,6 +255,16 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		})
 
 		t.Run("Participant in node list with invalid shares", func(t *testing.T) {
+			validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
+			validNodeID := big.NewInt(54321)
+
+			// add participant to node list with invalid shares
+			invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
+			invalidPoints := PointTuple{{big.NewInt(9), big.NewInt(9)}}
+			node2 := addParticipantToNodeList(
+				node1, validNodeID, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
+			)
+
 			verified, _ := node2.ProcessSecretShareVerification(id)
 			if verified {
 				t.Errorf(
@@ -288,19 +278,29 @@ func TestProcessSecretShareVerification(t *testing.T) {
 			}
 		})
 
-		// t.Run("Participant in node list with valid points", func(t *testing.T) {
-		// 	verified, _ := node3.ProcessSecretShareVerification(validNodeID)
-		// 	if !verified {
-		// 		t.Errorf(
-		// 			"Unable to verify a participant with valid shares:\n"+
-		// 				"node id: %v\n"+
-		// 				"participant id: %v\n"+
-		// 				"valid share1: %v\n"+
-		// 				"valid share2: %v\n",
-		// 			node3.id, validNodeID, validShare1, validShare2,
-		// 		)
-		// 	}
-		// })
+		t.Run("Participant in node list with valid points", func(t *testing.T) {
+			validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
+			validNodeID := big.NewInt(11111)
+
+			// add participant to node list with valid shares
+			validShare1, validShare2 := node1.EvaluatePolynomials()
+			validPoints := node1.VerificationPoints()
+			node3 := addParticipantToNodeList(
+				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
+			)
+
+			verified, _ := node3.ProcessSecretShareVerification(validNodeID)
+			if !verified {
+				t.Errorf(
+					"Unable to verify a participant with valid shares:\n"+
+						"node id: %v\n"+
+						"participant id: %v\n"+
+						"valid share1: %v\n"+
+						"valid share2: %v\n",
+					node3.id, validNodeID, validShare1, validShare2,
+				)
+			}
+		})
 
 	}
 }
