@@ -6,7 +6,6 @@ import (
 	"crypto/elliptic"
 	"crypto/sha512"
 	"encoding/base64"
-	"fmt"
 	"hash"
 	"math/big"
 	"reflect"
@@ -279,29 +278,29 @@ func TestProcessSecretShareVerification(t *testing.T) {
 			}
 		})
 
-		// t.Run("Participant in node list with valid points", func(t *testing.T) {
-		// 	validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
-		// 	validNodeID := big.NewInt(11111)
+		t.Run("Participant in node list with valid points", func(t *testing.T) {
+			validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
+			validNodeID := big.NewInt(11111)
 
-		// 	// add participant to node list with valid shares
-		// 	validShare1, validShare2 := node1.EvaluatePolynomials()
-		// 	validPoints := node1.VerificationPoints()
-		// 	node3 := addParticipantToNodeList(
-		// 		node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
-		// 	)
+			// add participant to node list with valid shares
+			validShare1, validShare2 := node1.EvaluatePolynomials()
+			validPoints := node1.VerificationPoints()
+			node3 := addParticipantToNodeList(
+				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
+			)
 
-		// 	verified, _ := node3.ProcessSecretShareVerification(validNodeID)
-		// 	if !verified {
-		// 		t.Errorf(
-		// 			"Unable to verify a participant with valid shares:\n"+
-		// 				"node id: %v\n"+
-		// 				"participant id: %v\n"+
-		// 				"valid share1: %v\n"+
-		// 				"valid share2: %v\n",
-		// 			node3.id, validNodeID, validShare1, validShare2,
-		// 		)
-		// 	}
-		// })
+			verified, _ := node3.ProcessSecretShareVerification(validNodeID)
+			if !verified {
+				t.Errorf(
+					"Unable to verify a participant with valid shares:\n"+
+						"node id: %v\n"+
+						"participant id: %v\n"+
+						"valid share1: %v\n"+
+						"valid share2: %v\n",
+					node3.id, validNodeID, validShare1, validShare2,
+				)
+			}
+		})
 
 	}
 }
@@ -313,9 +312,6 @@ func TestEvaluatePolynomials(t *testing.T) {
 		curve, hash, g2x, g2y, zkParam, timeout,
 		id, key, secretPoly1, secretPoly2,
 	)
-
-	share1, share2 := node.EvaluatePolynomials()
-	fmt.Println(share1, share2)
 
 	// invalidID := big.NewInt(9)
 

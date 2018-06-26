@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 	"log"
@@ -145,9 +144,7 @@ func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
 func comparePointTuples(a, b PointTuple) bool {
 	for i, pointA := range a {
 		pointB := b[i]
-		fmt.Println("pointA: ", pointA)
-		fmt.Println("pointB: ", pointB)
-		if pointA.X != pointB.X || pointA.Y != pointB.X {
+		if pointA.X.Uint64() != pointB.X.Uint64() || pointA.Y.Uint64() != pointB.Y.Uint64() {
 			return false
 		}
 	}
