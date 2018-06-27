@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
 	"hash"
@@ -360,4 +361,25 @@ func TestEvaluatePolynomials(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGenerateNodeAndSecrets(t *testing.T) {
+	curve, hash, g2x, g2y, zkParam, timeout, id, _, _, _ := getValidNodeParamsForTesting(t)
+	threshold := 4
+
+	node, err := GenerateNode(
+		curve, hash, g2x, g2y, zkParam,
+		timeout, id, rand.Reader, threshold,
+	)
+	if node == nil || err != nil {
+		t.Errorf(
+			"Could not create new node with params:\n"+
+				"curve: %v\n"+
+				"zkparam:%v\n"+
+				"g2: %v\n"+
+				"id: %v\n"+
+				"%v\n",
+			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, err,
+		)
+	}
 }

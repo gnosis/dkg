@@ -5,7 +5,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 	"log"
@@ -252,8 +251,8 @@ func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, thresh
 	}
 
 	err := secretPoly.validate(curve)
-	if err == nil {
-		fmt.Println("hooray")
+	if err != nil {
+		return nil, err[0]
 	}
 
 	return secretPoly, nil
