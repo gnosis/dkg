@@ -3,13 +3,14 @@ package dkg
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"log"
 	"math/big"
 	"time"
-	// "github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 type ScalarPolynomial []*big.Int
@@ -237,9 +238,30 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 
 }
 
+func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
+	N := curve.Params().N
+	secretPoly := make(ScalarPolynomial, threshold)
+
+	for i := 0; i < threshold; i++ {
+		// retrieve random scalar in-between 0 and base point order
+		scalar, err := rand.Int(randReader, N)
+		if err != nil {
+			return nil, err
+		}
+		secretPoly[i] = scalar
+	}
+
+	err := secretPoly.validate(curve)
+	if err == nil {
+		fmt.Println("hooray")
+	}
+
+	return secretPoly, nil
+}
+
 var mask = []byte{0xff, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
 
-func GenerateKey(
+func GenerateNode(
 	curve elliptic.Curve,
 	hash hash.Hash,
 	g2x *big.Int,
@@ -247,28 +269,28 @@ func GenerateKey(
 	zkParam *big.Int,
 	timeout time.Duration,
 	id *big.Int,
-	rand io.Reader,
-) (priv []byte, x, y *big.Int, err error) {
-	N := curve.Params().N
-	bitSize := N.BitLen()
-	byteLen := (bitSize + 7) >> 3
-	priv = make([]byte, byteLen)
-
-	for x == nil {
-		_, err = io.ReadFull(rand, priv)
-		if err != nil {
-			return
-		}
-		// mask excess bits
-		priv[0] &= mask[bitSize%8]
-		priv[1] ^= 0x42
-
-		// if scalar out of range, sample another random num
-		if new(big.Int).SetBytes(priv).Cmp(N) >= 0 {
-			continue
-		}
-
-		x, y = curve.ScalarBaseMult(priv)
+	randReader io.Reader,
+	threshold int,
+) (*node, error) {
+	key, err := ecdsa.GenerateKey(curve, randReader)
+	if key == nil || err != nil {
+		return nil, err
 	}
-	return
+	secretPoly1, err := generateSecretPolynomial(curve, randReader, threshold)
+	if secretPoly1 == nil || err != nil {
+		return nil, err
+	}
+	secretPoly2, err := generateSecretPolynomial(curve, randReader, threshold)
+	if secretPoly2 == nil || err != nil {
+		return nil, err
+	}
+
+	generatedNode, err := NewNode(
+		curve, hash, g2x, g2y, zkParam, timeout,
+		id, *key, secretPoly1, secretPoly2,
+	)
+	if generatedNode == nil || err != nil {
+		return nil, err
+	}
+	return generatedNode, nil
 }
