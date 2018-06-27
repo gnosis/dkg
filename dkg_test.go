@@ -231,8 +231,8 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		t.Errorf(
 			"Could not create new node with params:\n"+
 				"curve: %v\n"+
-				"g2: %v\n"+
 				"zkparam: %v\n"+
+				"g2: %v\n"+
 				"id: %v\n"+
 				"secretPoly1: %v\n"+
 				"secretPoly2: %v\n"+
@@ -249,14 +249,15 @@ func TestProcessSecretShareVerification(t *testing.T) {
 					"Verified an unverified participant with params:\n"+
 						"node id: %v\n"+
 						"participant id: %v\n"+
-						"other participants list length: %v\n",
-					node1.id, fakeNodeID, len(node1.otherParticipants),
+						"other participants list length: %v\n"+
+						"err: %v\n",
+					node1.id, fakeNodeID, len(node1.otherParticipants), err,
 				)
 			}
 		})
 
 		t.Run("Participant in node list with invalid shares", func(t *testing.T) {
-			validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
+			validPubKey := key.PublicKey
 			validNodeID := big.NewInt(54321)
 
 			// add participant to node list with invalid shares
@@ -266,21 +267,22 @@ func TestProcessSecretShareVerification(t *testing.T) {
 				node1, validNodeID, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
 			)
 
-			verified, _ := node2.ProcessSecretShareVerification(id)
+			verified, err := node2.ProcessSecretShareVerification(id)
 			if verified {
 				t.Errorf(
 					"Verified a participant with invalid shares:\n"+
 						"node id: %v\n"+
 						"participant id: %v\n"+
 						"invalid share1: %v\n"+
-						"invalid share2: %v\n",
-					node2.id, validNodeID, invalidShare1, invalidShare2,
+						"invalid share2: %v\n"+
+						"err: %v\n",
+					node2.id, validNodeID, invalidShare1, invalidShare2, err,
 				)
 			}
 		})
 
 		t.Run("Participant in node list with valid points", func(t *testing.T) {
-			validPubKey := ecdsa.PublicKey{key.Curve, key.X, key.Y}
+			validPubKey := key.PublicKey
 			validNodeID := big.NewInt(11111)
 
 			// add participant to node list with valid shares
@@ -290,15 +292,16 @@ func TestProcessSecretShareVerification(t *testing.T) {
 				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
 			)
 
-			verified, _ := node3.ProcessSecretShareVerification(validNodeID)
-			if !verified {
+			verified, err := node3.ProcessSecretShareVerification(validNodeID)
+			if !verified || err != nil {
 				t.Errorf(
 					"Unable to verify a participant with valid shares:\n"+
 						"node id: %v\n"+
 						"participant id: %v\n"+
 						"valid share1: %v\n"+
-						"valid share2: %v\n",
-					node3.id, validNodeID, validShare1, validShare2,
+						"valid share2: %v\n"+
+						"err: %v\n",
+					node3.id, validNodeID, validShare1, validShare2, err,
 				)
 			}
 		})
@@ -320,8 +323,8 @@ func TestEvaluatePolynomials(t *testing.T) {
 		t.Errorf(
 			"Could not create new node with params:\n"+
 				"curve: %v\n"+
-				"g2: %v\n"+
 				"zkparam:%v\n"+
+				"g2: %v\n"+
 				"id: %v\n"+
 				"secretPoly1: %v\n"+
 				"secretPoly2: %v\n"+
@@ -367,11 +370,11 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 	curve, hash, g2x, g2y, zkParam, timeout, id, _, _, _ := getValidNodeParamsForTesting(t)
 	threshold := 4
 
-	node, err := GenerateNode(
+	gNode, err := GenerateNode(
 		curve, hash, g2x, g2y, zkParam,
 		timeout, id, rand.Reader, threshold,
 	)
-	if node == nil || err != nil {
+	if gNode == nil || err != nil {
 		t.Errorf(
 			"Could not create new node with params:\n"+
 				"curve: %v\n"+
@@ -382,4 +385,30 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, err,
 		)
 	}
+
+	t.Run("Add participants and verify shares", func(t *testing.T) {
+		validPubKey := gNode.key.PublicKey
+		validNodeID := big.NewInt(12345)
+
+		//add participant to node list with valid shares
+		validShare1, validShare2 := gNode.EvaluatePolynomials()
+		validPoints := gNode.VerificationPoints()
+		gNode := addParticipantToNodeList(
+			gNode, validNodeID, validPubKey, validShare1, validShare2, validPoints, gNode.broadcast,
+		)
+
+		verified, err := gNode.ProcessSecretShareVerification(validNodeID)
+		if !verified || err != nil {
+			t.Errorf(
+				"Unable to verify a participant with valid shares:\n"+
+					"node id: %v\n"+
+					"participant id: %v\n"+
+					"valid share1: %v\n"+
+					"valid share2: %v\n"+
+					"err: %v\n",
+				gNode.id, validNodeID, validShare1, validShare2, err,
+			)
+		}
+	})
+
 }

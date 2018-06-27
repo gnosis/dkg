@@ -81,6 +81,7 @@ func NewNode(
 	if len(secretPoly1) != len(secretPoly2) {
 		polyErrors = append(polyErrors, InvalidScalarPolynomialLengthError{secretPoly1, secretPoly2})
 	}
+
 	if polyErrors != nil {
 		return nil, InvalidCurveScalarPolynomialError{curve, secretPoly1, polyErrors}
 	}
@@ -210,6 +211,7 @@ func (n *node) EvaluatePolynomials() (*big.Int, *big.Int) {
 		share1.Add(&res, &share1)
 	}
 	share1.Mod(&share1, n.curve.Params().N)
+
 	var share2 big.Int
 	for i, scalar := range secretPoly2 {
 		var res big.Int
@@ -218,6 +220,7 @@ func (n *node) EvaluatePolynomials() (*big.Int, *big.Int) {
 		share2.Add(&res, &share2)
 	}
 	share2.Mod(&share2, n.curve.Params().N)
+
 	return &share1, &share2
 }
 
@@ -233,6 +236,7 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 		curve2x, curve2y := n.curve.ScalarMult(n.g2x, n.g2y, scalar.Bytes())
 		sharesx, sharesy = n.curve.Add(curve1x, curve1y, curve2x, curve2y)
 	}
+
 	return PointTuple{{sharesx, sharesy}}
 
 }
@@ -275,10 +279,12 @@ func GenerateNode(
 	if key == nil || err != nil {
 		return nil, err
 	}
+
 	secretPoly1, err := generateSecretPolynomial(curve, randReader, threshold)
 	if secretPoly1 == nil || err != nil {
 		return nil, err
 	}
+
 	secretPoly2, err := generateSecretPolynomial(curve, randReader, threshold)
 	if secretPoly2 == nil || err != nil {
 		return nil, err
@@ -291,5 +297,6 @@ func GenerateNode(
 	if generatedNode == nil || err != nil {
 		return nil, err
 	}
+
 	return generatedNode, nil
 }
