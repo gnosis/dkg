@@ -48,8 +48,11 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	pubx, puby := curve.ScalarBaseMult(privd.Bytes())
 
 	key = ecdsa.PrivateKey{
-		ecdsa.PublicKey{curve, pubx, puby},
-		privd,
+		PublicKey: ecdsa.PublicKey{
+			Curve: curve,
+			X:     pubx,
+			Y:     puby},
+		D: privd,
 	}
 	secretPoly1 = ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
 	secretPoly2 = ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}

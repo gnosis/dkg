@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// ScalarPolynomial - type to represent polynomials in DKG protocol
 type ScalarPolynomial []*big.Int
 
 func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
@@ -19,7 +20,7 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 		return []error{errors.New("dkg: empty polynomial")}
 	}
 
-	var errors []error = nil
+	var errors []error
 	for _, c := range p {
 		if c.Sign() == 0 || !isNormalizedScalar(c, curve.Params().N) {
 			errors = append(errors, InvalidCurveScalarError{curve, c})
@@ -57,6 +58,7 @@ func isNormalizedScalar(x, n *big.Int) bool {
 	return x != nil && x.Sign() >= 0 && x.Cmp(n) < 0
 }
 
+// NewNode - function to construct and return new nodes in DKG protocol
 func NewNode(
 	curve elliptic.Curve,
 	hash hash.Hash,
@@ -76,7 +78,7 @@ func NewNode(
 		return nil, InvalidCurvePointError{curve, g2x, g2y}
 	}
 
-	var polyErrors []error = nil
+	var polyErrors []error
 	polyErrors = secretPoly1.validate(curve)
 	if len(secretPoly1) != len(secretPoly2) {
 		polyErrors = append(polyErrors, InvalidScalarPolynomialLengthError{secretPoly1, secretPoly2})
@@ -102,6 +104,7 @@ func (n *node) PublicKeyPart() (x, y *big.Int) {
 	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
 }
 
+// PointTuple - type to represent (x, y) points
 type PointTuple []struct{ X, Y *big.Int }
 
 func (n *node) VerificationPoints() PointTuple {
@@ -116,6 +119,7 @@ func (n *node) VerificationPoints() PointTuple {
 	return vpts
 }
 
+// Participant - struct to represent participants in nodes
 type Participant struct {
 	id                 *big.Int
 	key                ecdsa.PublicKey
@@ -264,6 +268,7 @@ func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, thresh
 
 var mask = []byte{0xff, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
 
+// GenerateNode - generates public key, private key, and secret polynomials, returns newNode()
 func GenerateNode(
 	curve elliptic.Curve,
 	hash hash.Hash,
