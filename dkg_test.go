@@ -3,7 +3,7 @@ package dkg
 import (
 	"bytes"
 	"crypto/ecdsa"
-	// "crypto/elliptic"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // import "bytes"
 
 func getValidNodeParamsForTesting(t *testing.T) (
-	curve secp256k1.BitCurve,
+	curve elliptic.Curve,
 	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
@@ -31,14 +31,14 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	secretPoly2 ScalarPolynomial,
 ) {
 	// curve = elliptic.P256()
-	curve = *secp256k1.S256()
+	curve = crypto.S256()
 	hash = sha512.New512_256()
 
 	var success bool
-	if g2x, success = new(big.Int).SetString("0a5d23f079fed8f443d7fa87d70849f846f941c07d77b1e1df139e8f7ff61a70", 16); !success {
+	if g2x, success = new(big.Int).SetString("b25b5ea8b8b230e5574fec0182e809e3455701323968c602ab56b458d0ba96bf", 16); !success {
 		t.Errorf("Could not initialize g2x")
 	}
-	if g2y, success = new(big.Int).SetString("608e4edf904f2e1d5f54ddc708afec01fd2287fc95555139e065cbad4d5ecdba", 16); !success {
+	if g2y, success = new(big.Int).SetString("13edfe75e1c88e030eda220ffc74802144aec67c4e51cb49699d4401c122e19c", 16); !success {
 		t.Errorf("Could not initialize g2y")
 	}
 
@@ -62,8 +62,8 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	return
 }
 
-func serializePoint(curve secp256k1.BitCurve, x, y *big.Int) string {
-	return base64.StdEncoding.EncodeToString(curve.Marshal(x, y))
+func serializePoint(curve elliptic.Curve, x, y *big.Int) string {
+	return base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, x, y))
 }
 
 func addParticipantToNodeList(
@@ -206,7 +206,7 @@ func TestValidNode(t *testing.T) {
 		t.Run("PublicKeyPart", func(t *testing.T) {
 			pubx, puby := node.PublicKeyPart()
 			pubkeypt := serializePoint(curve, pubx, puby)
-			if pubkeypt != "BGsX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT+NC4v4af5uO5+tKfA+eFivOM1drMV7Oy7ZAaDe/UfU=" {
+			if pubkeypt != "BHm+Zn753LusVaBilc6HCwcCm/zbLc4o2VnygVsW+BeYSDradyajxGVdpPv8DhEIqP0XtEimhVQZnEfQj/sQ1Lg=" {
 				t.Errorf("Got unexpected public key part %v", pubkeypt)
 			}
 		})
@@ -215,10 +215,10 @@ func TestValidNode(t *testing.T) {
 			vpts := node.VerificationPoints()
 			vptsbuf := new(bytes.Buffer)
 			for _, vpt := range vpts {
-				vptsbuf.Write(node.curve.Marshal(vpt.X, vpt.Y))
+				vptsbuf.Write(elliptic.Marshal(node.curve, vpt.X, vpt.Y))
 			}
 			vptsb64 := base64.StdEncoding.EncodeToString(vptsbuf.Bytes())
-			if vptsb64 != "BBRPCyOypp95ucbYOZTBcfoFklBEE2Hi3aFplbHeTmth17kAicWtDqV1IW/pqP0lEvv7ryW6ChH1Tw3V9I6WZOwEUyCd5oet8nQmjgHXn7uDW4wrnH23de/fVm9aO6Te4CfrhI3o0b0KFY/E7Z+gEGtLhE3zNFOwhEM5nQC/NNr4hQSgtaBOX63vRhZF3vZS5PdwaH2gDHY2cEBz2iETYHeliziLq1WGn10XqAmdT4vOtvYuFlxWUiHpJFILbi4LpMwNBFW0kj8eA8IieBQBqaU/eHALCS1QvAVW8zOriM+ZnlhxDkE6sX8aDPoQsCZ8EjAKt9N52qKsf8+YF8tSG403rxM=" {
+			if vptsb64 != "BMax5xZSzXQf/krKIPf8Um8VxtNkXF900ov5zLIRjlFMrSY43/vaRKlWBdFNX2wW1rRHeRCMiDEQWKbI7fZQDowEbSctUYDuj/77Gwf8m8v8JOvB7Tw8lo6dBF9AYTV8CgMbJo9Srf0xwDGJtwreJFx3ponCK3ivyS8uNQ3O6u5dBgQabgTZtjLYdlgunq9MAao8wgJfq2cxjVXEPVClj7oXFpUJkWuXDS5YvzVlXQHXWS2o0MW/KgMLfatVkOFI+WbGBH4yrdF3UYCk1C/+BQctVteaD+wLLaXZ95Ygr/kgPIFYRFCE30uMAXnGYIvjofbpSJ8fwnDFj2zizRTVBvixcVg=" {
 				t.Errorf("Got unexpected verification points %v", vptsb64)
 			}
 		})
@@ -311,7 +311,6 @@ func TestProcessSecretShareVerification(t *testing.T) {
 				)
 			}
 		})
-
 	}
 }
 
@@ -370,7 +369,6 @@ func TestEvaluatePolynomials(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGenerateNodeAndSecrets(t *testing.T) {

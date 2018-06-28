@@ -2,21 +2,21 @@ package dkg
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"log"
 	"math/big"
 	"time"
-
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // ScalarPolynomial - type to represent polynomials in DKG protocol
 type ScalarPolynomial []*big.Int
 
-func (p ScalarPolynomial) validate(curve secp256k1.BitCurve) []error {
+func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 	if len(p) <= 0 {
 		return []error{errors.New("dkg: empty polynomial")}
 	}
@@ -31,7 +31,7 @@ func (p ScalarPolynomial) validate(curve secp256k1.BitCurve) []error {
 }
 
 type node struct {
-	curve    secp256k1.BitCurve
+	curve    elliptic.Curve
 	hash     hash.Hash
 	g2x, g2y *big.Int
 	zkParam  *big.Int
@@ -61,7 +61,7 @@ func isNormalizedScalar(x, n *big.Int) bool {
 
 // NewNode - function to construct and return new nodes in DKG protocol
 func NewNode(
-	curve secp256k1.BitCurve,
+	curve elliptic.Curve,
 	hash hash.Hash,
 	g2x *big.Int, g2y *big.Int,
 	zkParam *big.Int,
@@ -150,6 +150,8 @@ func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
 func comparePointTuples(a, b PointTuple) bool {
 	for i, pointA := range a {
 		pointB := b[i]
+		fmt.Println("pointA: ", pointA)
+		fmt.Println("pointB: ", pointB)
 		if pointA.X.Uint64() != pointB.X.Uint64() || pointA.Y.Uint64() != pointB.Y.Uint64() {
 			return false
 		}
@@ -181,7 +183,7 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	// bob's verification points
 	vrhs := make(PointTuple, len(n.secretPoly1))
 
-	// secp256k1 base point order
+	// crypto base point order
 	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
 
 	// vxrhs, vyrhs := big.NewInt(0), big.NewInt(0)
@@ -245,7 +247,7 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 
 }
 
-func generateSecretPolynomial(curve secp256k1.BitCurve, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
+func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
 	N := curve.Params().N
 	secretPoly := make(ScalarPolynomial, threshold)
 
@@ -270,7 +272,7 @@ var mask = []byte{0xff, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
 
 // GenerateNode - generates public key, private key, and secret polynomials, returns newNode()
 func GenerateNode(
-	curve secp256k1.BitCurve,
+	curve elliptic.Curve,
 	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
