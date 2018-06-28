@@ -202,10 +202,9 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 
 }
 
-func (n *node) EvaluatePolynomials() (*big.Int, *big.Int) {
+func (n *node) EvaluatePolynomials(id *big.Int) (*big.Int, *big.Int) {
 	secretPoly1 := n.secretPoly1
 	secretPoly2 := n.secretPoly2
-	id := n.id
 
 	var share1 big.Int
 	for i, scalar := range secretPoly1 {

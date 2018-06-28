@@ -261,7 +261,7 @@ func TestProcessSecretShareVerification(t *testing.T) {
 
 		t.Run("Participant in node list with invalid shares", func(t *testing.T) {
 			validPubKey := key.PublicKey
-			validNodeID := big.NewInt(54321)
+			validNodeID := big.NewInt(12345)
 
 			// add participant to node list with invalid shares
 			invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
@@ -286,10 +286,10 @@ func TestProcessSecretShareVerification(t *testing.T) {
 
 		t.Run("Participant in node list with valid points", func(t *testing.T) {
 			validPubKey := key.PublicKey
-			validNodeID := big.NewInt(11111)
+			validNodeID := big.NewInt(12345)
 
 			// add participant to node list with valid shares
-			validShare1, validShare2 := node1.EvaluatePolynomials()
+			validShare1, validShare2 := node1.EvaluatePolynomials(validNodeID)
 			validPoints := node1.VerificationPoints()
 			node3 := addParticipantToNodeList(
 				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
@@ -351,8 +351,9 @@ func TestEvaluatePolynomials(t *testing.T) {
 		// })
 
 		t.Run("node returns correct shares", func(t *testing.T) {
+			validNodeID := big.NewInt(12345)
 			correctShare1, correctShare2 := big.NewInt(7525921076266), big.NewInt(15051994576250)
-			share1, share2 := node.EvaluatePolynomials()
+			share1, share2 := node.EvaluatePolynomials(validNodeID)
 			if share1.Uint64() != correctShare1.Uint64() || share2.Uint64() != correctShare2.Uint64() {
 				t.Errorf(
 					"node %v should have correct shares:\n"+
@@ -394,7 +395,7 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 		validNodeID := big.NewInt(12345)
 
 		//add participant to node list with valid shares
-		validShare1, validShare2 := gNode.EvaluatePolynomials()
+		validShare1, validShare2 := gNode.EvaluatePolynomials(validNodeID)
 		validPoints := gNode.VerificationPoints()
 		gNode := addParticipantToNodeList(
 			gNode, validNodeID, validPubKey, validShare1, validShare2, validPoints, gNode.broadcast,
