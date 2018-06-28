@@ -3,7 +3,7 @@ package dkg
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"crypto/elliptic"
+	// "crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
@@ -12,12 +12,14 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // import "bytes"
 
 func getValidNodeParamsForTesting(t *testing.T) (
-	curve elliptic.Curve,
+	curve secp256k1.BitCurve,
 	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
@@ -28,7 +30,8 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	secretPoly1 ScalarPolynomial,
 	secretPoly2 ScalarPolynomial,
 ) {
-	curve = elliptic.P256()
+	// curve = elliptic.P256()
+	curve = *secp256k1.S256()
 	hash = sha512.New512_256()
 
 	var success bool
@@ -59,8 +62,8 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	return
 }
 
-func serializePoint(curve elliptic.Curve, x, y *big.Int) string {
-	return base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, x, y))
+func serializePoint(curve secp256k1.BitCurve, x, y *big.Int) string {
+	return base64.StdEncoding.EncodeToString(curve.Marshal(x, y))
 }
 
 func addParticipantToNodeList(
@@ -212,7 +215,7 @@ func TestValidNode(t *testing.T) {
 			vpts := node.VerificationPoints()
 			vptsbuf := new(bytes.Buffer)
 			for _, vpt := range vpts {
-				vptsbuf.Write(elliptic.Marshal(curve, vpt.X, vpt.Y))
+				vptsbuf.Write(node.curve.Marshal(vpt.X, vpt.Y))
 			}
 			vptsb64 := base64.StdEncoding.EncodeToString(vptsbuf.Bytes())
 			if vptsb64 != "BBRPCyOypp95ucbYOZTBcfoFklBEE2Hi3aFplbHeTmth17kAicWtDqV1IW/pqP0lEvv7ryW6ChH1Tw3V9I6WZOwEUyCd5oet8nQmjgHXn7uDW4wrnH23de/fVm9aO6Te4CfrhI3o0b0KFY/E7Z+gEGtLhE3zNFOwhEM5nQC/NNr4hQSgtaBOX63vRhZF3vZS5PdwaH2gDHY2cEBz2iETYHeliziLq1WGn10XqAmdT4vOtvYuFlxWUiHpJFILbi4LpMwNBFW0kj8eA8IieBQBqaU/eHALCS1QvAVW8zOriM+ZnlhxDkE6sX8aDPoQsCZ8EjAKt9N52qKsf8+YF8tSG403rxM=" {

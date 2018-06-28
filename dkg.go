@@ -2,7 +2,6 @@ package dkg
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
 	"hash"
@@ -10,12 +9,14 @@ import (
 	"log"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // ScalarPolynomial - type to represent polynomials in DKG protocol
 type ScalarPolynomial []*big.Int
 
-func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
+func (p ScalarPolynomial) validate(curve secp256k1.BitCurve) []error {
 	if len(p) <= 0 {
 		return []error{errors.New("dkg: empty polynomial")}
 	}
@@ -30,7 +31,7 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 }
 
 type node struct {
-	curve    elliptic.Curve
+	curve    secp256k1.BitCurve
 	hash     hash.Hash
 	g2x, g2y *big.Int
 	zkParam  *big.Int
@@ -60,7 +61,7 @@ func isNormalizedScalar(x, n *big.Int) bool {
 
 // NewNode - function to construct and return new nodes in DKG protocol
 func NewNode(
-	curve elliptic.Curve,
+	curve secp256k1.BitCurve,
 	hash hash.Hash,
 	g2x *big.Int, g2y *big.Int,
 	zkParam *big.Int,
@@ -244,7 +245,7 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 
 }
 
-func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
+func generateSecretPolynomial(curve secp256k1.BitCurve, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
 	N := curve.Params().N
 	secretPoly := make(ScalarPolynomial, threshold)
 
@@ -269,7 +270,7 @@ var mask = []byte{0xff, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
 
 // GenerateNode - generates public key, private key, and secret polynomials, returns newNode()
 func GenerateNode(
-	curve elliptic.Curve,
+	curve secp256k1.BitCurve,
 	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,

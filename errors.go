@@ -1,12 +1,15 @@
 package dkg
 
-import "fmt"
-import "crypto/elliptic"
-import "math/big"
+import (
+	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+)
 
 // InvalidCurveScalarError - thrown when validation of ScalarPolynomial fails
 type InvalidCurveScalarError struct {
-	curve elliptic.Curve
+	curve secp256k1.BitCurve
 	k     *big.Int
 }
 
@@ -17,7 +20,7 @@ func (e InvalidCurveScalarError) Error() string {
 
 // InvalidCurveScalarPolynomialError - thrown when construction of ScalarPolynomial fails
 type InvalidCurveScalarPolynomialError struct {
-	curve     elliptic.Curve
+	curve     secp256k1.BitCurve
 	poly      ScalarPolynomial
 	subErrors []error
 }
@@ -38,14 +41,14 @@ func (e InvalidScalarPolynomialLengthError) Error() string {
 
 // InvalidCurvePointError - thrown when curve 2 points are not on base curve
 type InvalidCurvePointError struct {
-	curve    elliptic.Curve
+	curve    secp256k1.BitCurve
 	g2x, g2y *big.Int
 }
 
 func (e InvalidCurvePointError) Error() string {
 	return fmt.Sprintf("dkg: invalid %v point %x",
 		e.curve.Params().Name,
-		elliptic.Marshal(e.curve, e.g2x, e.g2y),
+		e.curve.Marshal(e.g2x, e.g2y),
 	)
 }
 
