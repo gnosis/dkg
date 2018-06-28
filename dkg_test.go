@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
 	"hash"
@@ -47,8 +48,11 @@ func getValidNodeParamsForTesting(t *testing.T) (
 	pubx, puby := curve.ScalarBaseMult(privd.Bytes())
 
 	key = ecdsa.PrivateKey{
-		ecdsa.PublicKey{curve, pubx, puby},
-		privd,
+		PublicKey: ecdsa.PublicKey{
+			Curve: curve,
+			X:     pubx,
+			Y:     puby},
+		D: privd,
 	}
 	secretPoly1 = ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
 	secretPoly2 = ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
@@ -57,6 +61,26 @@ func getValidNodeParamsForTesting(t *testing.T) (
 
 func serializePoint(curve elliptic.Curve, x, y *big.Int) string {
 	return base64.StdEncoding.EncodeToString(elliptic.Marshal(curve, x, y))
+}
+
+func addParticipantToNodeList(
+	n *node,
+	id *big.Int,
+	key ecdsa.PublicKey,
+	secretShare1 *big.Int,
+	secretShare2 *big.Int,
+	verificationPoints PointTuple,
+	private chan Message,
+) *node {
+	participant := Participant{
+		id,
+		key,
+		secretShare1,
+		secretShare2,
+		verificationPoints,
+		private}
+	n.otherParticipants = append(n.otherParticipants, participant)
+	return n
 }
 
 func TestInvalidNodeConstruction(t *testing.T) {
@@ -201,25 +225,194 @@ func TestValidNode(t *testing.T) {
 func TestProcessSecretShareVerification(t *testing.T) {
 	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
-	node, err := NewNode(
+	node1, err := NewNode(
 		curve, hash, g2x, g2y, zkParam, timeout,
 		id, key, secretPoly1, secretPoly2,
 	)
 
-	if node == nil || err != nil {
+	if node1 == nil || err != nil {
 		t.Errorf(
 			"Could not create new node with params:\n"+
 				"curve: %v\n"+
-				"g2: %v\n"+
 				"zkparam: %v\n"+
+				"g2: %v\n"+
 				"id: %v\n"+
 				"secretPoly1: %v\n"+
 				"secretPoly2: %v\n"+
 				"%v\n",
 			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, secretPoly1, secretPoly2, err,
 		)
+	} else {
+		t.Run("Participant not in node list", func(t *testing.T) {
+			fakeNodeID := big.NewInt(99999)
+
+			verified, err := node1.ProcessSecretShareVerification(fakeNodeID)
+			if verified || err == nil {
+				t.Errorf(
+					"Verified an unverified participant with params:\n"+
+						"node id: %v\n"+
+						"participant id: %v\n"+
+						"other participants list length: %v\n"+
+						"err: %v\n",
+					node1.id, fakeNodeID, len(node1.otherParticipants), err,
+				)
+			}
+		})
+
+		t.Run("Participant in node list with invalid shares", func(t *testing.T) {
+			validPubKey := key.PublicKey
+			validNodeID := big.NewInt(12345)
+
+			// add participant to node list with invalid shares
+			invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
+			invalidPoints := PointTuple{{big.NewInt(9), big.NewInt(9)}}
+			node2 := addParticipantToNodeList(
+				node1, validNodeID, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
+			)
+
+			verified, err := node2.ProcessSecretShareVerification(id)
+			if verified {
+				t.Errorf(
+					"Verified a participant with invalid shares:\n"+
+						"node id: %v\n"+
+						"participant id: %v\n"+
+						"invalid share1: %v\n"+
+						"invalid share2: %v\n"+
+						"err: %v\n",
+					node2.id, validNodeID, invalidShare1, invalidShare2, err,
+				)
+			}
+		})
+
+		t.Run("Participant in node list with valid points", func(t *testing.T) {
+			validPubKey := key.PublicKey
+			validNodeID := big.NewInt(12345)
+
+			// add participant to node list with valid shares
+			validShare1, validShare2 := node1.EvaluatePolynomials(validNodeID)
+			validPoints := node1.VerificationPoints()
+			node3 := addParticipantToNodeList(
+				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
+			)
+
+			verified, err := node3.ProcessSecretShareVerification(validNodeID)
+			if !verified || err != nil {
+				t.Errorf(
+					"Unable to verify a participant with valid shares:\n"+
+						"node id: %v\n"+
+						"participant id: %v\n"+
+						"valid share1: %v\n"+
+						"valid share2: %v\n"+
+						"err: %v\n",
+					node3.id, validNodeID, validShare1, validShare2, err,
+				)
+			}
+		})
+
+	}
+}
+
+func TestEvaluatePolynomials(t *testing.T) {
+	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+
+	node, err := NewNode(
+		curve, hash, g2x, g2y, zkParam, timeout,
+		id, key, secretPoly1, secretPoly2,
+	)
+
+	// invalidID := big.NewInt(9)
+
+	if node == nil || err != nil {
+		t.Errorf(
+			"Could not create new node with params:\n"+
+				"curve: %v\n"+
+				"zkparam:%v\n"+
+				"g2: %v\n"+
+				"id: %v\n"+
+				"secretPoly1: %v\n"+
+				"secretPoly2: %v\n"+
+				"%v\n",
+			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, secretPoly1, secretPoly2, err,
+		)
+	} else {
+		// t.Run("invalid ID returns incorrect shares", func(t *testing.T) {
+		// 	invalidShare1, invalidShare2 := node.EvaluatePolynomials(invalidID)
+		// 	if (invalidShare1 is incorrect...) {
+		// 		t.Errorf(
+		// 			"invalid id should have invalid shares:\n"
+		// 				"nodeID: %v\n"+
+		// 				"invalidID: %v\n"+
+		// 				"invalid share1: %v\n"+
+		// 				"invalid share2: %v\n",
+		// 			node.id, invalidID, invalidShare1, invalidShare2,
+		// 		)
+
+		// 	}
+		// })
+
+		t.Run("node returns correct shares", func(t *testing.T) {
+			validNodeID := big.NewInt(12345)
+			correctShare1, correctShare2 := big.NewInt(7525921076266), big.NewInt(15051994576250)
+			share1, share2 := node.EvaluatePolynomials(validNodeID)
+			if share1.Uint64() != correctShare1.Uint64() || share2.Uint64() != correctShare2.Uint64() {
+				t.Errorf(
+					"node %v should have correct shares:\n"+
+						"correct share1: %v\n"+
+						"correct share2: %v\n"+
+						"but received:\n"+
+						"incorrect share1: %v\n"+
+						"incorrect share2: %v\n",
+					node.id, correctShare1, correctShare2, share1, share2,
+				)
+			}
+		})
 	}
 
-	// fmt.Println(node.TestProcessSecretShareVerification(node))
+}
+
+func TestGenerateNodeAndSecrets(t *testing.T) {
+	curve, hash, g2x, g2y, zkParam, timeout, id, _, _, _ := getValidNodeParamsForTesting(t)
+	threshold := 4
+
+	gNode, err := GenerateNode(
+		curve, hash, g2x, g2y, zkParam,
+		timeout, id, rand.Reader, threshold,
+	)
+	if gNode == nil || err != nil {
+		t.Errorf(
+			"Could not create new node with params:\n"+
+				"curve: %v\n"+
+				"zkparam:%v\n"+
+				"g2: %v\n"+
+				"id: %v\n"+
+				"%v\n",
+			curve.Params().Name, zkParam, serializePoint(curve, g2x, g2y), id, err,
+		)
+	}
+
+	t.Run("Add participants and verify shares", func(t *testing.T) {
+		validPubKey := gNode.key.PublicKey
+		validNodeID := big.NewInt(12345)
+
+		//add participant to node list with valid shares
+		validShare1, validShare2 := gNode.EvaluatePolynomials(validNodeID)
+		validPoints := gNode.VerificationPoints()
+		gNode := addParticipantToNodeList(
+			gNode, validNodeID, validPubKey, validShare1, validShare2, validPoints, gNode.broadcast,
+		)
+
+		verified, err := gNode.ProcessSecretShareVerification(validNodeID)
+		if !verified || err != nil {
+			t.Errorf(
+				"Unable to verify a participant with valid shares:\n"+
+					"node id: %v\n"+
+					"participant id: %v\n"+
+					"valid share1: %v\n"+
+					"valid share2: %v\n"+
+					"err: %v\n",
+				gNode.id, validNodeID, validShare1, validShare2, err,
+			)
+		}
+	})
 
 }
