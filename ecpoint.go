@@ -9,22 +9,22 @@ type ECPoint struct {
 	X, Y *big.Int
 }
 
-func (e *ECPoint) Params(a, b *big.Int) *elliptic.CurveParams {
+func (ecp *ECPoint) Params(a, b *big.Int) *elliptic.CurveParams {
 
 }
 
-func (e *ECPoint) IsOnCurve(a, b *big.Int) bool {
+func (ecp *ECPoint) IsOnCurve(a *ECPoint) bool {
 
 }
 
-func (e *ECPoint) Add(a, b *big.Int) *ECPoint {
+func (ecp *ECPoint) Add(a, b *big.Int) *ECPoint {
 
 }
 
-func (e *ECPoint) ScalarMult(a, b *big.Int) *ECPoint {
+func (ecp *ECPoint) ScalarMult(a *ECPoint, k *big.Int) *ECPoint {
 
 }
 
-func (e *ECPoint) ScalarBaseMult(a, b *big.Int) *ECPoint {
+func (ecp *ECPoint) ScalarBaseMult(k *big.Int) *ECPoint {
 
 }
