@@ -52,12 +52,7 @@ type node struct {
 	secretPoly2 ScalarPolynomial
 
 	// This node's view of other nodes in the protocol
-	otherParticipants []struct {
-		id                 *big.Int
-		secretShare1       *big.Int
-		secretShare2       *big.Int
-		verificationPoints PointTuple
-	}
+	otherParticipants []Participant
 }
 
 // isNormalizedScalar checks to see that 0 <= x < n.
