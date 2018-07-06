@@ -208,31 +208,25 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	return false, nil
 }
 
+// Evaluates a polynomial with argument x giving a result modulo n
+func (poly ScalarPolynomial) evaluate(x *big.Int, n *big.Int) *big.Int {
+	var res big.Int
+	for i, coeff := range poly {
+		var term big.Int
+		term.Exp(x, big.NewInt(int64(i)), n)
+		term.Mul(&term, coeff)
+		res.Add(&term, &res)
+	}
+	res.Mod(&res, n)
+
+	return &res
+}
+
 // EvaluatePolynomials evaluates a node's secret polynomials given another node's ID, returning
 // the node's secret shares for the other node.
 func (n *node) EvaluatePolynomials(id *big.Int) (*big.Int, *big.Int) {
-	secretPoly1 := n.secretPoly1
-	secretPoly2 := n.secretPoly2
-
-	var share1 big.Int
-	for i, scalar := range secretPoly1 {
-		var res big.Int
-		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
-		res.Mul(&res, scalar)
-		share1.Add(&res, &share1)
-	}
-	share1.Mod(&share1, n.curve.Params().N)
-
-	var share2 big.Int
-	for i, scalar := range secretPoly2 {
-		var res big.Int
-		res.Exp(id, big.NewInt(int64(i)), n.curve.Params().N)
-		res.Mul(&res, scalar)
-		share2.Add(&res, &share2)
-	}
-	share2.Mod(&share2, n.curve.Params().N)
-
-	return &share1, &share2
+	curveN := n.curve.Params().N
+	return n.secretPoly1.evaluate(id, curveN), n.secretPoly2.evaluate(id, curveN)
 }
 
 // GeneratePublicShares returns a node's verification points as derived from its secret polynomials.
