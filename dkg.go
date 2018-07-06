@@ -2,11 +2,9 @@
 package dkg
 
 import (
-	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
-	"hash"
 	"io"
 	"log"
 	"math/big"
@@ -38,8 +36,6 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 type node struct {
 	// The vector space underlying the protocol. Typically will be an elliptic curve.
 	curve elliptic.Curve
-	// The hash algorithm
-	hash hash.Hash
 	// A second element of the vector space for which the scalar k in the relation k * G = G2 is unknown.
 	g2x, g2y *big.Int
 	// A zero knowledge parameter agreed upon within the DKG group for proving possession of secrets
@@ -49,24 +45,18 @@ type node struct {
 	timeout time.Duration
 
 	// The ID associated with a node. Must be a scalar from the finite field underlying the vector space
-	id  *big.Int
-	key ecdsa.PrivateKey
+	id *big.Int
 	// The first secret polynomial for the node
 	secretPoly1 ScalarPolynomial
 	// The second secret polynomial for the node
 	secretPoly2 ScalarPolynomial
 
-	broadcast chan Message
-
 	// This node's view of other nodes in the protocol
 	otherParticipants []struct {
 		id                 *big.Int
-		key                ecdsa.PublicKey
 		secretShare1       *big.Int
 		secretShare2       *big.Int
 		verificationPoints PointTuple
-
-		private chan Message
 	}
 }
 
@@ -78,13 +68,11 @@ func isNormalizedScalar(x, n *big.Int) bool {
 // NewNode constructs a new node for DKG given some configuration variables.
 func NewNode(
 	curve elliptic.Curve,
-	hash hash.Hash,
 	g2x *big.Int, g2y *big.Int,
 	zkParam *big.Int,
 	timeout time.Duration,
 
 	id *big.Int,
-	key ecdsa.PrivateKey,
 	secretPoly1 ScalarPolynomial,
 	secretPoly2 ScalarPolynomial,
 ) (*node, error) {
@@ -111,9 +99,9 @@ func NewNode(
 	}
 
 	return &node{
-		curve, hash, g2x, g2y, zkParam, timeout,
-		id, key, secretPoly1, secretPoly2,
-		nil, nil,
+		curve, g2x, g2y, zkParam, timeout,
+		id, secretPoly1, secretPoly2,
+		nil,
 	}, nil
 }
 
@@ -142,8 +130,7 @@ func (n *node) VerificationPoints() PointTuple {
 // Participant represent a view of other nodes for a node
 type Participant struct {
 	// The other node's ID
-	id  *big.Int
-	key ecdsa.PublicKey
+	id *big.Int
 	// This node's share of the other node's secret (derived from the first secret polynomial)
 	secretShare1 *big.Int
 	// This node's share of the other node's secret (derived from the second secret polynomial)
@@ -151,7 +138,6 @@ type Participant struct {
 	// The other node's public verification points, which are vectors derived
 	// from the first and second secret polynomials.
 	verificationPoints PointTuple
-	private            chan Message
 }
 
 // Searches a node for its view of another node, given the other node's ID.
@@ -160,11 +146,9 @@ func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
 		if participant.id == id {
 			matchingParticipant := Participant{
 				participant.id,
-				participant.key,
 				participant.secretShare1,
 				participant.secretShare2,
 				participant.verificationPoints,
-				participant.private,
 			}
 			return &matchingParticipant, nil
 		}
@@ -299,7 +283,6 @@ func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, thresh
 // GenerateNode generates a new DKG node randomly.
 func GenerateNode(
 	curve elliptic.Curve,
-	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
 	zkParam *big.Int,
@@ -308,11 +291,6 @@ func GenerateNode(
 	randReader io.Reader,
 	threshold int,
 ) (*node, error) {
-	key, err := ecdsa.GenerateKey(curve, randReader)
-	if key == nil || err != nil {
-		return nil, err
-	}
-
 	secretPoly1, err := generateSecretPolynomial(curve, randReader, threshold)
 	if secretPoly1 == nil || err != nil {
 		return nil, err
@@ -324,8 +302,8 @@ func GenerateNode(
 	}
 
 	generatedNode, err := NewNode(
-		curve, hash, g2x, g2y, zkParam, timeout,
-		id, *key, secretPoly1, secretPoly2,
+		curve, g2x, g2y, zkParam, timeout,
+		id, secretPoly1, secretPoly2,
 	)
 	if generatedNode == nil || err != nil {
 		return nil, err

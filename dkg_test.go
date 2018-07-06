@@ -2,12 +2,9 @@ package dkg
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha512"
 	"encoding/base64"
-	"hash"
 	"math/big"
 	"reflect"
 	"testing"
@@ -18,18 +15,15 @@ import (
 
 func getValidNodeParamsForTesting(t *testing.T) (
 	curve elliptic.Curve,
-	hash hash.Hash,
 	g2x *big.Int,
 	g2y *big.Int,
 	zkParam *big.Int,
 	timeout time.Duration,
 	id *big.Int,
-	key ecdsa.PrivateKey,
 	secretPoly1 ScalarPolynomial,
 	secretPoly2 ScalarPolynomial,
 ) {
 	curve = elliptic.P256()
-	hash = sha512.New512_256()
 
 	var success bool
 	if g2x, success = new(big.Int).SetString("0a5d23f079fed8f443d7fa87d70849f846f941c07d77b1e1df139e8f7ff61a70", 16); !success {
@@ -44,16 +38,6 @@ func getValidNodeParamsForTesting(t *testing.T) (
 
 	id = big.NewInt(12345)
 
-	privd := big.NewInt(1234567890)
-	pubx, puby := curve.ScalarBaseMult(privd.Bytes())
-
-	key = ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: curve,
-			X:     pubx,
-			Y:     puby},
-		D: privd,
-	}
 	secretPoly1 = ScalarPolynomial{big.NewInt(1), big.NewInt(2), big.NewInt(3), big.NewInt(4)}
 	secretPoly2 = ScalarPolynomial{big.NewInt(5), big.NewInt(6), big.NewInt(7), big.NewInt(8)}
 	return
@@ -66,25 +50,22 @@ func serializePoint(curve elliptic.Curve, x, y *big.Int) string {
 func addParticipantToNodeList(
 	n *node,
 	id *big.Int,
-	key ecdsa.PublicKey,
 	secretShare1 *big.Int,
 	secretShare2 *big.Int,
 	verificationPoints PointTuple,
-	private chan Message,
 ) *node {
 	participant := Participant{
 		id,
-		key,
 		secretShare1,
 		secretShare2,
 		verificationPoints,
-		private}
+	}
 	n.otherParticipants = append(n.otherParticipants, participant)
 	return n
 }
 
 func TestInvalidNodeConstruction(t *testing.T) {
-	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, timeout, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 	zero := big.NewInt(0)
 
 	t.Run("Invalid g2", func(t *testing.T) {
@@ -103,8 +84,8 @@ func TestInvalidNodeConstruction(t *testing.T) {
 
 		for _, bad := range badPoints {
 			node, err := NewNode(
-				curve, hash, bad.x, bad.y, zkParam, timeout,
-				id, key, secretPoly1, secretPoly2,
+				curve, bad.x, bad.y, zkParam, timeout,
+				id, secretPoly1, secretPoly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
@@ -150,8 +131,8 @@ func TestInvalidNodeConstruction(t *testing.T) {
 
 		for _, bad := range badPolys {
 			node, err := NewNode(
-				curve, hash, g2x, g2y, zkParam, timeout,
-				id, key, bad.poly1, bad.poly2,
+				curve, g2x, g2y, zkParam, timeout,
+				id, bad.poly1, bad.poly2,
 			)
 			if node != nil && err == nil {
 				t.Errorf(
@@ -180,11 +161,11 @@ func TestInvalidNodeConstruction(t *testing.T) {
 }
 
 func TestValidNode(t *testing.T) {
-	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, timeout, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
 	node, err := NewNode(
-		curve, hash, g2x, g2y, zkParam, timeout,
-		id, key, secretPoly1, secretPoly2,
+		curve, g2x, g2y, zkParam, timeout,
+		id, secretPoly1, secretPoly2,
 	)
 
 	if node == nil || err != nil {
@@ -223,11 +204,11 @@ func TestValidNode(t *testing.T) {
 }
 
 func TestProcessSecretShareVerification(t *testing.T) {
-	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, timeout, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
 	node1, err := NewNode(
-		curve, hash, g2x, g2y, zkParam, timeout,
-		id, key, secretPoly1, secretPoly2,
+		curve, g2x, g2y, zkParam, timeout,
+		id, secretPoly1, secretPoly2,
 	)
 
 	if node1 == nil || err != nil {
@@ -260,14 +241,13 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		})
 
 		t.Run("Participant in node list with invalid shares", func(t *testing.T) {
-			validPubKey := key.PublicKey
 			validNodeID := big.NewInt(12345)
 
 			// add participant to node list with invalid shares
 			invalidShare1, invalidShare2 := big.NewInt(9), big.NewInt(9)
 			invalidPoints := PointTuple{{big.NewInt(9), big.NewInt(9)}}
 			node2 := addParticipantToNodeList(
-				node1, validNodeID, validPubKey, invalidShare1, invalidShare2, invalidPoints, node1.broadcast,
+				node1, validNodeID, invalidShare1, invalidShare2, invalidPoints,
 			)
 
 			verified, err := node2.ProcessSecretShareVerification(id)
@@ -285,14 +265,13 @@ func TestProcessSecretShareVerification(t *testing.T) {
 		})
 
 		t.Run("Participant in node list with valid points", func(t *testing.T) {
-			validPubKey := key.PublicKey
 			validNodeID := big.NewInt(12345)
 
 			// add participant to node list with valid shares
 			validShare1, validShare2 := node1.EvaluatePolynomials(validNodeID)
 			validPoints := node1.VerificationPoints()
 			node3 := addParticipantToNodeList(
-				node1, validNodeID, validPubKey, validShare1, validShare2, validPoints, node1.broadcast,
+				node1, validNodeID, validShare1, validShare2, validPoints,
 			)
 
 			verified, err := node3.ProcessSecretShareVerification(validNodeID)
@@ -313,11 +292,11 @@ func TestProcessSecretShareVerification(t *testing.T) {
 }
 
 func TestEvaluatePolynomials(t *testing.T) {
-	curve, hash, g2x, g2y, zkParam, timeout, id, key, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, timeout, id, secretPoly1, secretPoly2 := getValidNodeParamsForTesting(t)
 
 	node, err := NewNode(
-		curve, hash, g2x, g2y, zkParam, timeout,
-		id, key, secretPoly1, secretPoly2,
+		curve, g2x, g2y, zkParam, timeout,
+		id, secretPoly1, secretPoly2,
 	)
 
 	// invalidID := big.NewInt(9)
@@ -371,11 +350,11 @@ func TestEvaluatePolynomials(t *testing.T) {
 }
 
 func TestGenerateNodeAndSecrets(t *testing.T) {
-	curve, hash, g2x, g2y, zkParam, timeout, id, _, _, _ := getValidNodeParamsForTesting(t)
+	curve, g2x, g2y, zkParam, timeout, id, _, _ := getValidNodeParamsForTesting(t)
 	threshold := 4
 
 	gNode, err := GenerateNode(
-		curve, hash, g2x, g2y, zkParam,
+		curve, g2x, g2y, zkParam,
 		timeout, id, rand.Reader, threshold,
 	)
 	if gNode == nil || err != nil {
@@ -391,14 +370,13 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 	}
 
 	t.Run("Add participants and verify shares", func(t *testing.T) {
-		validPubKey := gNode.key.PublicKey
 		validNodeID := big.NewInt(12345)
 
 		//add participant to node list with valid shares
 		validShare1, validShare2 := gNode.EvaluatePolynomials(validNodeID)
 		validPoints := gNode.VerificationPoints()
 		gNode := addParticipantToNodeList(
-			gNode, validNodeID, validPubKey, validShare1, validShare2, validPoints, gNode.broadcast,
+			gNode, validNodeID, validShare1, validShare2, validPoints,
 		)
 
 		verified, err := gNode.ProcessSecretShareVerification(validNodeID)
