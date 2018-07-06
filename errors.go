@@ -4,7 +4,7 @@ import "fmt"
 import "crypto/elliptic"
 import "math/big"
 
-// InvalidCurveScalarError - thrown when validation of ScalarPolynomial fails
+// InvalidCurveScalarError indicates a scalar is not a normalized field element for a given vector space
 type InvalidCurveScalarError struct {
 	curve elliptic.Curve
 	k     *big.Int
@@ -15,7 +15,7 @@ func (e InvalidCurveScalarError) Error() string {
 		e.curve.Params().Name, e.k.Bytes())
 }
 
-// InvalidCurveScalarPolynomialError - thrown when construction of ScalarPolynomial fails
+// InvalidCurveScalarPolynomialError indicates that a ScalarPolynomial is not constructed properly
 type InvalidCurveScalarPolynomialError struct {
 	curve     elliptic.Curve
 	poly      ScalarPolynomial
@@ -27,7 +27,7 @@ func (e InvalidCurveScalarPolynomialError) Error() string {
 		e.curve.Params().Name, e.poly, e.subErrors)
 }
 
-// InvalidScalarPolynomialLengthError - thrown when length of constructed ScalarPolnomials are unequal
+// InvalidScalarPolynomialLengthError indicates that ScalarPolynomials which should have a matching degree don't
 type InvalidScalarPolynomialLengthError struct {
 	poly1, poly2 ScalarPolynomial
 }
@@ -36,7 +36,7 @@ func (e InvalidScalarPolynomialLengthError) Error() string {
 	return fmt.Sprintf("dkg: scalar polynomial lengths don't match: %v != %v", len(e.poly1), len(e.poly2))
 }
 
-// InvalidCurvePointError - thrown when curve 2 points are not on base curve
+// InvalidCurvePointError indicates that a given vector does not belong to a vector space
 type InvalidCurvePointError struct {
 	curve    elliptic.Curve
 	g2x, g2y *big.Int
@@ -49,7 +49,7 @@ func (e InvalidCurvePointError) Error() string {
 	)
 }
 
-// ParticipantNotFoundError - thrown when participant not found in node's participant list
+// ParticipantNotFoundError indicates a node with a particular ID could not be found in a node's participant list
 type ParticipantNotFoundError struct {
 	nodeID, participantID *big.Int
 }
