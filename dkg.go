@@ -296,8 +296,6 @@ func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, thresh
 	return secretPoly, nil
 }
 
-var mask = []byte{0xff, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
-
 // GenerateNode generates a new DKG node randomly.
 func GenerateNode(
 	curve elliptic.Curve,
