@@ -28,7 +28,6 @@ func getValidNodeParamsForTesting(t *testing.T) (
 
 	// curve = elliptic.P256()
 	curve = crypto.S256()
-	hash = sha512.New512_256()
 
 	var success bool
 	if g2x, success = new(big.Int).SetString("b25b5ea8b8b230e5574fec0182e809e3455701323968c602ab56b458d0ba96bf", 16); !success {
