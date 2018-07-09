@@ -155,6 +155,8 @@ func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
 func comparePointTuples(a, b PointTuple) bool {
 	for i, pointA := range a {
 		pointB := b[i]
+		// fmt.Println("pointA: ", pointA)
+		// fmt.Println("pointB: ", pointB)
 		if pointA.X.Uint64() != pointB.X.Uint64() || pointA.Y.Uint64() != pointB.Y.Uint64() {
 			return false
 		}
@@ -187,17 +189,19 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	// bob's verification points
 	vrhs := make(PointTuple, len(n.secretPoly1))
 
-	// secp256k1 base point order
+	// crypto base point order
 	// var N = big.NewInt(int64(115792089237316195423570985008687907852837564279074904382605163141518161494337))
 
-	// vxrhs, vyrhs := big.NewInt(0), big.NewInt(0)
-	vrhs[0].X, vrhs[0].Y = big.NewInt(0), big.NewInt(0)
 	// verify right hand side
 	for i, point := range p.verificationPoints {
 		var pow big.Int
 		pow.Exp(ownAddress, big.NewInt(int64(i)), n.curve.Params().N)
 		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
-		vrhs[0].X, vrhs[0].Y = n.curve.Add(vrhs[0].X, vrhs[0].Y, px, py)
+		if i == 0 {
+			vrhs[0].X, vrhs[0].Y = px, py
+		} else {
+			vrhs[0].X, vrhs[0].Y = n.curve.Add(vrhs[0].X, vrhs[0].Y, px, py)
+		}
 	}
 
 	if comparePointTuples(vlhs, vrhs) {

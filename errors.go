@@ -1,8 +1,10 @@
 package dkg
 
-import "fmt"
-import "crypto/elliptic"
-import "math/big"
+import (
+	"crypto/elliptic"
+	"fmt"
+	"math/big"
+)
 
 // InvalidCurveScalarError indicates a scalar is not a normalized field element for a given vector space
 type InvalidCurveScalarError struct {
