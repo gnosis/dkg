@@ -1,8 +1,10 @@
 package dkg
 
-import "fmt"
-import "crypto/elliptic"
-import "math/big"
+import (
+	"crypto/elliptic"
+	"fmt"
+	"math/big"
+)
 
 // InvalidCurveScalarError - thrown when validation of ScalarPolynomial fails
 type InvalidCurveScalarError struct {
