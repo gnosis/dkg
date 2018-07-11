@@ -152,7 +152,7 @@ func comparePointTuples(a, b PointTuple) bool {
 		pointB := b[i]
 		// fmt.Println("pointA: ", pointA)
 		// fmt.Println("pointB: ", pointB)
-		if pointA.Equal(pointB) {
+		if !pointA.Equal(pointB) {
 			return false
 		}
 	}
