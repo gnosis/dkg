@@ -27,7 +27,7 @@ func (p ScalarPolynomial) validate(curve kyber.Group) []error {
 
 	var errors []error
 	for _, c := range p {
-		if c.Sign() == 0 || !isNormalizedScalar(c, curve.Point().Base()) {
+		if c.Equal(c.Zero()) || !isNormalizedScalar(c, curve.Point().Base()) {
 			errors = append(errors, InvalidCurveScalarError{curve, c})
 		}
 	}
@@ -59,7 +59,7 @@ type node struct {
 
 // isNormalizedScalar checks to see that 0 <= x < n.
 func isNormalizedScalar(x, n kyber.Scalar) bool {
-	return x != nil && x.Sign() >= 0 && x.Cmp(n) < 0
+	return x != nil && x.Equal(x.Zero()) && x.Cmp(n) < 0
 }
 
 // NewNode constructs a new node for DKG given some configuration variables.
