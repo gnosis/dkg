@@ -104,7 +104,7 @@ func NewNode(
 }
 
 func (n *node) ScalarBaseMult(s kyber.Scalar) kyber.Point {
-	return n.curve.Point().Mul(s, curve.Point.Base())
+	return n.curve.Point().Mul(s, n.curve.Point().Base())
 }
 
 // PublicKeyPart retrieves the vector related to the constant term of a node's first secret polynomial.
@@ -123,7 +123,7 @@ func (n *node) VerificationPoints() PointTuple {
 	for i, c1 := range n.secretPoly1 {
 		c2 := n.secretPoly2[i]
 		a := n.ScalarBaseMult(c1)
-		b := n.curve.Point().Mul(n.g2, c2)
+		b := n.curve.Point().Mul(c2, n.g2)
 		vpts[i] = n.curve.Point().Add(a, b)
 	}
 	return vpts
@@ -189,9 +189,9 @@ func (n *node) ProcessSecretShareVerification(id kyber.Scalar) (bool, error) {
 
 	// verify left hand side
 	a := n.ScalarBaseMult(share1)
-	b := n.curve.Point().Mul(n.g2, share2)
+	b := n.curve.Point().Mul(share2, n.g2)
 	vpoint := n.curve.Point().Add(a, b)
-	vlhs := PointTuple{{vpoint}}
+	vlhs := PointTuple{vpoint}
 
 	// bob's verification points
 	vrhs := make(PointTuple, len(n.secretPoly1))
@@ -203,7 +203,7 @@ func (n *node) ProcessSecretShareVerification(id kyber.Scalar) (bool, error) {
 	for i, point := range p.verificationPoints {
 		var pow kyber.Scalar
 		pow.Exp(ownAddress, i, n.curve.Params().N)
-		p := n.curve.Point().Mul(point, pow)
+		p := n.curve.Point().Mul(pow, point)
 		if i == 0 {
 			vrhs[0] = p
 		} else {
@@ -220,11 +220,11 @@ func (n *node) ProcessSecretShareVerification(id kyber.Scalar) (bool, error) {
 }
 
 // Evaluates a polynomial with argument x giving a result modulo n
-func (poly ScalarPolynomial) evaluate(x *big.Int, n *big.Int) *big.Int {
+func (poly ScalarPolynomial) evaluate(x, n kyber.Scalar) *big.Int {
 	var res big.Int
 	for i, coeff := range poly {
 		var term big.Int
-		term.Exp(x, big.NewInt(int64(i)), n)
+		term.Exp(x, i, n)
 		term.Mul(&term, coeff)
 		res.Add(&term, &res)
 	}
@@ -235,7 +235,7 @@ func (poly ScalarPolynomial) evaluate(x *big.Int, n *big.Int) *big.Int {
 
 // EvaluatePolynomials evaluates a node's secret polynomials given another node's ID, returning
 // the node's secret shares for the other node.
-func (n *node) EvaluatePolynomials(id *big.Int) (*big.Int, *big.Int) {
+func (n *node) EvaluatePolynomials(id kyber.Scalar) (kyber.Scalar, kyber.Scalar) {
 	curveN := n.curve.Params().N
 	return n.secretPoly1.evaluate(id, curveN), n.secretPoly2.evaluate(id, curveN)
 }
@@ -246,15 +246,14 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 		log.Fatal("polynomial lengths do not match")
 	}
 
-	var sharesx *big.Int
-	var sharesy *big.Int
+	var shares kyber.Point
 	for i, scalar := range poly1 {
-		curve1x, curve1y := n.curve.ScalarBaseMult(big.NewInt(int64(i)).Bytes())
-		curve2x, curve2y := n.curve.ScalarMult(n.g2x, n.g2y, scalar.Bytes())
-		sharesx, sharesy = n.curve.Add(curve1x, curve1y, curve2x, curve2y)
+		curve1 := n.ScalarBaseMult(i)
+		curve2 := n.curve.Point().Mul(scalar, n.g2)
+		shares = n.curve.Point().Add(curve1, curve2x)
 	}
 
-	return PointTuple{{sharesx, sharesy}}
+	return PointTuple{{shares}}
 
 }
 
@@ -301,7 +300,7 @@ func GenerateNode(
 	}
 
 	generatedNode, err := NewNode(
-		curve, g2 zkParam, timeout,
+		curve, g2, zkParam, timeout,
 		id, secretPoly1, secretPoly2,
 	)
 	if generatedNode == nil || err != nil {

@@ -56,7 +56,7 @@ func (e InvalidCurvePointError) Error() string {
 
 // ParticipantNotFoundError indicates a node with a particular ID could not be found in a node's participant list
 type ParticipantNotFoundError struct {
-	nodeID, participantID *big.Int
+	nodeID, participantID kyber.Scalar
 }
 
 func (e ParticipantNotFoundError) Error() string {
