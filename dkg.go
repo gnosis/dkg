@@ -2,30 +2,32 @@
 package dkg
 
 import (
-	"crypto/elliptic"
+	// "crypto/elliptic"
 	"crypto/rand"
 	"errors"
 	"io"
 	"log"
 	"math/big"
 	"time"
+
+	"github.com/dedis/kyber"
 )
 
 // ScalarPolynomial represents polynomials of scalars. It contains coefficients
 // from the finite field under the vector space. Coefficient zero represents the constant
 // term, coefficient one the linear term's coefficient, two the quadratic, etc.
-type ScalarPolynomial []*big.Int
+type ScalarPolynomial []kyber.Scalar
 
 // validate ensures all elements of a scalar polynomial are compatible with a given
 // finite field associated with the vector space given.
-func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
+func (p ScalarPolynomial) validate(curve kyber.Group) []error {
 	if len(p) <= 0 {
 		return []error{errors.New("dkg: empty polynomial")}
 	}
 
 	var errors []error
 	for _, c := range p {
-		if c.Sign() == 0 || !isNormalizedScalar(c, curve.Params().N) {
+		if c.Sign() == 0 || !isNormalizedScalar(c, curve.Point().Base()) {
 			errors = append(errors, InvalidCurveScalarError{curve, c})
 		}
 	}
@@ -35,17 +37,17 @@ func (p ScalarPolynomial) validate(curve elliptic.Curve) []error {
 // node represents a dkg node
 type node struct {
 	// The vector space underlying the protocol. Typically will be an elliptic curve.
-	curve elliptic.Curve
+	curve kyber.Group
 	// A second element of the vector space for which the scalar k in the relation k * G = G2 is unknown.
-	g2x, g2y *big.Int
+	g2 kyber.Point
 	// A zero knowledge parameter agreed upon within the DKG group for proving possession of secrets
 	// that have a corresponding vector
-	zkParam *big.Int
+	zkParam kyber.Scalar
 	// A timeout for communications in the protocol
 	timeout time.Duration
 
 	// The ID associated with a node. Must be a scalar from the finite field underlying the vector space
-	id *big.Int
+	id kyber.Scalar
 	// The first secret polynomial for the node
 	secretPoly1 ScalarPolynomial
 	// The second secret polynomial for the node
@@ -56,27 +58,28 @@ type node struct {
 }
 
 // isNormalizedScalar checks to see that 0 <= x < n.
-func isNormalizedScalar(x, n *big.Int) bool {
+func isNormalizedScalar(x, n kyber.Scalar) bool {
 	return x != nil && x.Sign() >= 0 && x.Cmp(n) < 0
 }
 
 // NewNode constructs a new node for DKG given some configuration variables.
 func NewNode(
-	curve elliptic.Curve,
-	g2x *big.Int, g2y *big.Int,
-	zkParam *big.Int,
+	curve kyber.Group,
+	g2 kyber.Point,
+	zkParam kyber.Scalar,
 	timeout time.Duration,
 
-	id *big.Int,
+	id kyber.Scalar,
 	secretPoly1 ScalarPolynomial,
 	secretPoly2 ScalarPolynomial,
 ) (*node, error) {
 
-	if !isNormalizedScalar(g2x, curve.Params().P) ||
-		!isNormalizedScalar(g2y, curve.Params().P) ||
-		!curve.IsOnCurve(g2x, g2y) {
-		return nil, InvalidCurvePointError{curve, g2x, g2y}
-	}
+	// elliptic curve specific logic
+	// if !isNormalizedScalar(g2x, curve.Params().P) ||
+	// 	!isNormalizedScalar(g2y, curve.Params().P) ||
+	// 	!curve.IsOnCurve(g2x, g2y) {
+	// 	return nil, InvalidCurvePointError{curve, g2x, g2y}
+	// }
 
 	var polyErrors []error
 	polyErrors = secretPoly1.validate(curve)
@@ -94,19 +97,23 @@ func NewNode(
 	}
 
 	return &node{
-		curve, g2x, g2y, zkParam, timeout,
+		curve, g2, zkParam, timeout,
 		id, secretPoly1, secretPoly2,
 		nil,
 	}, nil
 }
 
+func (n *node) ScalarBaseMult(s kyber.Scalar) kyber.Point {
+	return n.curve.Point().Mul(s, curve.Point.Base())
+}
+
 // PublicKeyPart retrieves the vector related to the constant term of a node's first secret polynomial.
-func (n *node) PublicKeyPart() (x, y *big.Int) {
-	return n.curve.ScalarBaseMult(n.secretPoly1[0].Bytes())
+func (n *node) PublicKeyPart() (p kyber.Point) {
+	return n.ScalarBaseMult(n.secretPoly1[0])
 }
 
 // PointTuple represents a set of vectors.
-type PointTuple []struct{ X, Y *big.Int }
+type PointTuple []kyber.Point
 
 // VerificationPoints retrives a set of vectors which may be used to verify that secret shares
 // sent to a node are legitimate.
@@ -115,9 +122,9 @@ func (n *node) VerificationPoints() PointTuple {
 	vpts := make(PointTuple, len(n.secretPoly1))
 	for i, c1 := range n.secretPoly1 {
 		c2 := n.secretPoly2[i]
-		ax, ay := n.curve.ScalarBaseMult(c1.Bytes())
-		bx, by := n.curve.ScalarMult(n.g2x, n.g2y, c2.Bytes())
-		vpts[i].X, vpts[i].Y = n.curve.Add(ax, ay, bx, by)
+		a := n.ScalarBaseMult(c1)
+		b := n.curve.Point().Mul(n.g2, c2)
+		vpts[i] = n.curve.Point().Add(a, b)
 	}
 	return vpts
 }
@@ -125,18 +132,18 @@ func (n *node) VerificationPoints() PointTuple {
 // Participant represent a view of other nodes for a node
 type Participant struct {
 	// The other node's ID
-	id *big.Int
+	id kyber.Scalar
 	// This node's share of the other node's secret (derived from the first secret polynomial)
-	secretShare1 *big.Int
+	secretShare1 kyber.Scalar
 	// This node's share of the other node's secret (derived from the second secret polynomial)
-	secretShare2 *big.Int
+	secretShare2 kyber.Scalar
 	// The other node's public verification points, which are vectors derived
 	// from the first and second secret polynomials.
 	verificationPoints PointTuple
 }
 
 // Searches a node for its view of another node, given the other node's ID.
-func (n *node) getParticipantByID(id *big.Int) (p *Participant, _ error) {
+func (n *node) getParticipantByID(id kyber.Scalar) (p *Participant, _ error) {
 	for _, participant := range n.otherParticipants {
 		if participant.id == id {
 			matchingParticipant := Participant{
@@ -157,7 +164,7 @@ func comparePointTuples(a, b PointTuple) bool {
 		pointB := b[i]
 		// fmt.Println("pointA: ", pointA)
 		// fmt.Println("pointB: ", pointB)
-		if pointA.X.Uint64() != pointB.X.Uint64() || pointA.Y.Uint64() != pointB.Y.Uint64() {
+		if pointA.Equal(pointB) {
 			return false
 		}
 	}
@@ -166,7 +173,7 @@ func comparePointTuples(a, b PointTuple) bool {
 
 // Verifies that the secret shares a node has received from another node matches the other node's
 // verification points
-func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
+func (n *node) ProcessSecretShareVerification(id kyber.Scalar) (bool, error) {
 	// alice's address
 	ownAddress := n.id
 
@@ -181,10 +188,10 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 	share2 := p.secretShare2
 
 	// verify left hand side
-	ax, ay := n.curve.ScalarBaseMult(share1.Bytes())
-	bx, by := n.curve.ScalarMult(n.g2x, n.g2y, share2.Bytes())
-	vxlhs, vylhs := n.curve.Add(ax, ay, bx, by)
-	vlhs := PointTuple{{vxlhs, vylhs}}
+	a := n.ScalarBaseMult(share1)
+	b := n.curve.Point().Mul(n.g2, share2)
+	vpoint := n.curve.Point().Add(a, b)
+	vlhs := PointTuple{{vpoint}}
 
 	// bob's verification points
 	vrhs := make(PointTuple, len(n.secretPoly1))
@@ -194,13 +201,13 @@ func (n *node) ProcessSecretShareVerification(id *big.Int) (bool, error) {
 
 	// verify right hand side
 	for i, point := range p.verificationPoints {
-		var pow big.Int
-		pow.Exp(ownAddress, big.NewInt(int64(i)), n.curve.Params().N)
-		px, py := n.curve.ScalarMult(point.X, point.Y, pow.Bytes())
+		var pow kyber.Scalar
+		pow.Exp(ownAddress, i, n.curve.Params().N)
+		p := n.curve.Point().Mul(point, pow)
 		if i == 0 {
-			vrhs[0].X, vrhs[0].Y = px, py
+			vrhs[0] = p
 		} else {
-			vrhs[0].X, vrhs[0].Y = n.curve.Add(vrhs[0].X, vrhs[0].Y, px, py)
+			vrhs[0] = n.curve.Point().Add(vrhs[0], p)
 		}
 	}
 
@@ -252,7 +259,7 @@ func (n *node) GeneratePublicShares(poly1, poly2 ScalarPolynomial) PointTuple {
 }
 
 // generateSecretPolynomial creates a random scalar polynomial of degree threshold
-func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
+func generateSecretPolynomial(curve kyber.Group, randReader io.Reader, threshold int) (ScalarPolynomial, error) {
 	N := curve.Params().N
 	secretPoly := make(ScalarPolynomial, threshold)
 
@@ -275,12 +282,11 @@ func generateSecretPolynomial(curve elliptic.Curve, randReader io.Reader, thresh
 
 // GenerateNode generates a new DKG node randomly.
 func GenerateNode(
-	curve elliptic.Curve,
-	g2x *big.Int,
-	g2y *big.Int,
-	zkParam *big.Int,
+	curve kyber.Group,
+	g2 kyber.Point,
+	zkParam kyber.Scalar,
 	timeout time.Duration,
-	id *big.Int,
+	id kyber.Scalar,
 	randReader io.Reader,
 	threshold int,
 ) (*node, error) {
@@ -295,7 +301,7 @@ func GenerateNode(
 	}
 
 	generatedNode, err := NewNode(
-		curve, g2x, g2y, zkParam, timeout,
+		curve, g2 zkParam, timeout,
 		id, secretPoly1, secretPoly2,
 	)
 	if generatedNode == nil || err != nil {

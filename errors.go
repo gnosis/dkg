@@ -1,14 +1,17 @@
 package dkg
 
 import (
+	// "crypto/elliptic"
 	"crypto/elliptic"
 	"fmt"
 	"math/big"
+
+	"github.com/dedis/kyber"
 )
 
 // InvalidCurveScalarError indicates a scalar is not a normalized field element for a given vector space
 type InvalidCurveScalarError struct {
-	curve elliptic.Curve
+	curve kyber.Group
 	k     *big.Int
 }
 
@@ -19,7 +22,7 @@ func (e InvalidCurveScalarError) Error() string {
 
 // InvalidCurveScalarPolynomialError indicates that a ScalarPolynomial is not constructed properly
 type InvalidCurveScalarPolynomialError struct {
-	curve     elliptic.Curve
+	curve     kyber.Group
 	poly      ScalarPolynomial
 	subErrors []error
 }
@@ -40,7 +43,7 @@ func (e InvalidScalarPolynomialLengthError) Error() string {
 
 // InvalidCurvePointError indicates that a given vector does not belong to a vector space
 type InvalidCurvePointError struct {
-	curve    elliptic.Curve
+	curve    kyber.Group
 	g2x, g2y *big.Int
 }
 
