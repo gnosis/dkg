@@ -330,22 +330,22 @@ func TestEvaluatePolynomials(t *testing.T) {
 		// 	}
 		// })
 
-		// t.Run("node returns correct shares", func(t *testing.T) {
-		// 	validNodeID := curve.Scalar().SetInt64(12345)
-		// 	correctShare1, correctShare2 := curve.Scalar().SetInt64(7525921076266), curve.Scalar().SetInt64(15051994576250)
-		// 	share1, share2 := node.EvaluatePolynomials(validNodeID)
-		// 	if share1.Uint64() != correctShare1.Uint64() || share2.Uint64() != correctShare2.Uint64() {
-		// 		t.Errorf(
-		// 			"node %v should have correct shares:\n"+
-		// 				"correct share1: %v\n"+
-		// 				"correct share2: %v\n"+
-		// 				"but received:\n"+
-		// 				"incorrect share1: %v\n"+
-		// 				"incorrect share2: %v\n",
-		// 			node.id, correctShare1, correctShare2, share1, share2,
-		// 		)
-		// 	}
-		// })
+		t.Run("node returns correct shares", func(t *testing.T) {
+			validNodeID := curve.Scalar().SetInt64(12345)
+			correctShare1, correctShare2 := curve.Scalar().SetInt64(7525921076266), curve.Scalar().SetInt64(15051994576250)
+			share1, share2 := node.EvaluatePolynomials(validNodeID)
+			if !share1.Equal(correctShare1) || !share2.Equal(correctShare2) {
+				t.Errorf(
+					"node %v should have correct shares:\n"+
+						"correct share1: %v\n"+
+						"correct share2: %v\n"+
+						"but received:\n"+
+						"incorrect share1: %v\n"+
+						"incorrect share2: %v\n",
+					node.id, correctShare1, correctShare2, share1, share2,
+				)
+			}
+		})
 	}
 }
 
