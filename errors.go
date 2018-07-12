@@ -1,32 +1,32 @@
 package dkg
 
 import (
-	"crypto/elliptic"
 	"fmt"
-	"math/big"
+
+	"github.com/dedis/kyber"
 )
 
 // InvalidCurveScalarError indicates a scalar is not a normalized field element for a given vector space
 type InvalidCurveScalarError struct {
-	curve elliptic.Curve
-	k     *big.Int
+	curve kyber.Group
+	k     kyber.Scalar
 }
 
 func (e InvalidCurveScalarError) Error() string {
-	return fmt.Sprintf("dkg: invalid %v scalar %64x",
-		e.curve.Params().Name, e.k.Bytes())
+	return fmt.Sprintf("dkg: invalid %v scalar %v",
+		e.curve, e.k)
 }
 
 // InvalidCurveScalarPolynomialError indicates that a ScalarPolynomial is not constructed properly
 type InvalidCurveScalarPolynomialError struct {
-	curve     elliptic.Curve
+	curve     kyber.Group
 	poly      ScalarPolynomial
 	subErrors []error
 }
 
 func (e InvalidCurveScalarPolynomialError) Error() string {
 	return fmt.Sprintf("dkg: invalid %v scalar polynomial %v (%v)",
-		e.curve.Params().Name, e.poly, e.subErrors)
+		e.curve, e.poly, e.subErrors)
 }
 
 // InvalidScalarPolynomialLengthError indicates that ScalarPolynomials which should have a matching degree don't
@@ -40,20 +40,20 @@ func (e InvalidScalarPolynomialLengthError) Error() string {
 
 // InvalidCurvePointError indicates that a given vector does not belong to a vector space
 type InvalidCurvePointError struct {
-	curve    elliptic.Curve
-	g2x, g2y *big.Int
+	curve kyber.Group
+	g2    kyber.Point
 }
 
 func (e InvalidCurvePointError) Error() string {
-	return fmt.Sprintf("dkg: invalid %v point %x",
-		e.curve.Params().Name,
-		elliptic.Marshal(e.curve, e.g2x, e.g2y),
+	return fmt.Sprintf("dkg: invalid %v point %v",
+		e.curve,
+		e.g2,
 	)
 }
 
 // ParticipantNotFoundError indicates a node with a particular ID could not be found in a node's participant list
 type ParticipantNotFoundError struct {
-	nodeID, participantID *big.Int
+	nodeID, participantID kyber.Scalar
 }
 
 func (e ParticipantNotFoundError) Error() string {
