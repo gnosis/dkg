@@ -272,3 +272,8 @@ func GenerateNode(
 
 	return generatedNode, nil
 }
+
+// LagrangeInterpolcationZero - find a constant in a source polynomial S=f(0) using Lagrange polynomials
+// func LagrangeInterpolationZero(points []struct{ x, fX kyber.Scalar }) kyber.Scalar {
+
+// }

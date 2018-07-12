@@ -394,3 +394,13 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 	})
 
 }
+
+// func TestLagrangeInterpolationZero(t *testing.T) {
+// 	/* 1. create a random polynomial with threshold t
+// 	 * 2. sample t points from it (x1, fX1) ... (xt, fXt) (this is using the evaluate function)
+// 	 * 3. pass those points into LagrangeInterpolateZero(..) and verify that the result of that == random polynomial `evaluate`d at 0
+// 	 */
+// 	t.Run("calculates polynomial result", func(t *testing.T) {
+
+// 	})
+// }
