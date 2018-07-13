@@ -274,6 +274,19 @@ func GenerateNode(
 }
 
 // LagrangeInterpolcationZero - find a constant in a source polynomial S=f(0) using Lagrange polynomials
-// func LagrangeInterpolationZero(points []struct{ x, fX kyber.Scalar }) kyber.Scalar {
+func (curve kyber.Group) LagrangeInterpolationZero(points []struct{ x, fX kyber.Scalar }) kyber.Scalar {
 
-// }
+	var sum kyber.Scalar
+	for l := 1; l < t+1; l++ {
+		// outer sum
+
+		var product = kyber.Scalar
+		for i, point := range points {
+			// inner products
+
+		}
+		product = product.Mul()
+		sum = sum.Add(product)
+	}
+
+}
