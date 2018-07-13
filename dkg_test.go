@@ -397,7 +397,7 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 
 func TestLagrangeInterpolationZero(t *testing.T) {
 
-	curve, g2, zkParam, timeout, id, _, _ := getValidNodeParamsForTesting(t)
+	curve, _, _, _, _, _, _ := getValidNodeParamsForTesting(t)
 
 	t.Run("calculates polynomial result", func(t *testing.T) {
 		/* 1. create a random polynomial with threshold t
@@ -405,30 +405,30 @@ func TestLagrangeInterpolationZero(t *testing.T) {
 		* 3. pass those points into LagrangeInterpolateZero(..) and verify that the result of that == random polynomial `evaluate`d at 0
 		 */
 		poly := ScalarPolynomial{
-			[]kyber.Scalar{
-				curve.Scalar().SetInt64(1),
-				curve.Scalar().SetInt64(2),
-				curve.Scalar().SetInt64(3),
-				curve.Scalar().SetInt64(4)},
+			curve.Scalar().SetInt64(1),
+			curve.Scalar().SetInt64(1),
+			// curve.Scalar().SetInt64(3),
+			// curve.Scalar().SetInt64(4),
+		}
+		samplePoints := []struct {
+			x  kyber.Scalar
+			fX kyber.Scalar
+		}{
+			{curve.Scalar().SetInt64(5), poly.evaluate(curve.Scalar().SetInt64(5))},
+			{curve.Scalar().SetInt64(7), poly.evaluate(curve.Scalar().SetInt64(7))},
+			{curve.Scalar().SetInt64(9), poly.evaluate(curve.Scalar().SetInt64(9))},
 		}
 
-		threshold := curve.Scalar().SetInt64(2)
+		res := LagrangeInterpolateZero(samplePoints)
 
-		t := poly.evaluate(threshold)
-
-		res, err := curve.LagrangeInterpolateZero(t)
-
-		for i, pointA := range poly {
-			pointB := res[i]
-			if pointA != pointB || err != nil {
-				t.Errorf(
-					"Polynomials do not match\n"+
-						"expected polynomial point: %v\n"+
-						"got polynomial point: %v\n"+
-						"err: %v\n",
-					pointA, pointB, err,
-				)
-			}
+		expected := curve.Scalar().SetInt64(0xf5)
+		if !expected.Equal(res) {
+			t.Errorf(
+				"Polynomials do not match\n"+
+					"expected polynomial point: %v\n"+
+					"got polynomial point: %v\n",
+				expected, res,
+			)
 		}
 	})
 }
