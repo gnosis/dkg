@@ -419,15 +419,16 @@ func TestLagrangeInterpolationZero(t *testing.T) {
 			{curve.Scalar().SetInt64(9), poly.evaluate(curve.Scalar().SetInt64(9))},
 		}
 
-		res := LagrangeInterpolateZero(samplePoints)
+		res, err := LagrangeInterpolateZero(samplePoints)
 
 		expected := curve.Scalar().SetInt64(0xf5)
-		if !expected.Equal(res) {
+		if !expected.Equal(res) || err != nil {
 			t.Errorf(
 				"Polynomials do not match\n"+
 					"expected polynomial point: %v\n"+
-					"got polynomial point: %v\n",
-				expected, res,
+					"got polynomial point: %v\n"+
+					"err: %v\n",
+				expected, res, err,
 			)
 		}
 	})
