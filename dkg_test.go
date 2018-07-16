@@ -398,37 +398,46 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 func TestLagrangeInterpolationZero(t *testing.T) {
 
 	curve, _, _, _, _, _, _ := getValidNodeParamsForTesting(t)
+	rand := bn256.NewSuite().RandomStream()
 
 	t.Run("calculates polynomial result", func(t *testing.T) {
-		/* 1. create a random polynomial with threshold t
-		* 2. sample t points from it (x1, fX1) ... (xt, fXt) (this is using the evaluate function)
-		* 3. pass those points into LagrangeInterpolateZero(..) and verify that the result of that == random polynomial `evaluate`d at 0
-		 */
-		poly := ScalarPolynomial{
-			curve.Scalar().SetInt64(1),
-			curve.Scalar().SetInt64(1),
-			// curve.Scalar().SetInt64(3),
-			// curve.Scalar().SetInt64(4),
+		// 1. create a random polynomial with threshold t
+		// 2. sample t points from it (x1, fX1) ... (xt, fXt) (this is using the evaluate function)
+		// 3. pass those points into LagrangeInterpolateZero(..) and verify that the result of that == random polynomial `evaluate`d at 0
+		order := 2
+		poly, err := generateSecretPolynomial(curve, rand, order)
+		if err != nil {
+			t.Errorf("Could not generate polynomial: %v", err)
+			return
 		}
-		samplePoints := []struct {
+
+		samplePoints := make([]struct {
 			x  kyber.Scalar
 			fX kyber.Scalar
-		}{
-			{curve.Scalar().SetInt64(5), poly.evaluate(curve.Scalar().SetInt64(5))},
-			{curve.Scalar().SetInt64(7), poly.evaluate(curve.Scalar().SetInt64(7))},
-			{curve.Scalar().SetInt64(9), poly.evaluate(curve.Scalar().SetInt64(9))},
+		}, order)
+
+		for i := range samplePoints {
+			samplePoints[i].x = curve.Scalar().Pick(rand)
+			samplePoints[i].fX = poly.evaluate(samplePoints[i].x)
 		}
 
 		res, err := LagrangeInterpolateZero(samplePoints)
 
-		expected := curve.Scalar().SetInt64(0xf5)
+		expected := poly[0]
+
+		if !expected.Equal(poly.evaluate(curve.Scalar().Zero())) {
+			t.Errorf("Polynomial zero should be same as constant coefficient")
+			return
+		}
+
 		if !expected.Equal(res) || err != nil {
 			t.Errorf(
 				"Polynomials do not match\n"+
-					"expected polynomial point: %v\n"+
-					"got polynomial point: %v\n"+
+					"expected: %v\n"+
+					"actual:   %v\n"+
+					"polynomial coefficients: %v\n"+
 					"err: %v\n",
-				expected, res, err,
+				expected, res, poly, err,
 			)
 		}
 	})
