@@ -275,15 +275,13 @@ func GenerateNode(
 
 // LagrangeInterpolateZero - find a constant in a source polynomial S=f(0) using Lagrange polynomials
 // using computationally efficient approach https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing#Computationally_Efficient_Approach
-func LagrangeInterpolateZero(points []struct{ x, fX kyber.Scalar }) (kyber.Scalar, error) {
+func LagrangeInterpolateZero(points []struct{ x, fX kyber.Scalar }, group kyber.Group) (kyber.Scalar, error) {
 	if len(points) < 2 {
 		return nil, InvalidPointsLengthError{len(points)}
 	}
 
-	group := points[0].x // get group methods
-	// zero := group.SetInt64(0)
+	constant := group.Scalar().Zero()
 
-	constant := group.SetInt64(0)
 	for j := 0; j < len(points); j++ {
 		// outer summation
 		pointJ := points[j]
@@ -293,20 +291,19 @@ func LagrangeInterpolateZero(points []struct{ x, fX kyber.Scalar }) (kyber.Scala
 			return nil, InvalidPointValueError{pointJ.fX}
 		}
 
-		product := group.SetInt64(1)
+		product := group.Scalar().One()
 
 		for _, point := range points {
 			if point.x == pointJ.x {
 				continue
 			}
 			// inner products
-			division := group.Div(point.x, group.Sub(point.x, pointJ.x)) // x_m / (x_m - x_j)
-			product = group.Mul(product, division)                       // mathematical product
+			division := group.Scalar().Div(point.x, group.Scalar().Sub(point.x, pointJ.x)) // x_m / (x_m - x_j)
+			product = group.Scalar().Mul(product, division)                                // mathematical product
 
 		}
-
-		product = group.Mul(product, pointJ.fX) // final multiplication by f(x_j)
-		constant = group.Add(constant, product)
+		product = group.Scalar().Mul(product, pointJ.fX) // final multiplication by f(x_j)
+		constant = group.Scalar().Add(constant, product)
 
 	}
 	return constant, nil

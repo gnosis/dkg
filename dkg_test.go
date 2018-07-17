@@ -415,13 +415,12 @@ func TestLagrangeInterpolationZero(t *testing.T) {
 			x  kyber.Scalar
 			fX kyber.Scalar
 		}, order)
-
 		for i := range samplePoints {
 			samplePoints[i].x = curve.Scalar().Pick(rand)
 			samplePoints[i].fX = poly.evaluate(samplePoints[i].x)
 		}
 
-		res, err := LagrangeInterpolateZero(samplePoints)
+		res, err := LagrangeInterpolateZero(samplePoints, curve)
 
 		expected := poly[0]
 
