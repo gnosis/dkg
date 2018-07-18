@@ -394,3 +394,37 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 	})
 
 }
+
+// func TestShadowEncryption(t *testing.T) {
+// 	curve, g2, zkParam, timeout, id, _, _ := getValidNodeParamsForTesting(t)
+// 	threshold := 4
+// 	validNodeID := curve.Scalar().SetInt64(12345)
+
+// 	gNode, err := GenerateNode(
+// 		curve, g2, zkParam,
+// 		timeout, id, bn256.NewSuite().RandomStream(), threshold,
+// 	)
+
+// 	validShare1, validShare2 := gNode.EvaluatePolynomials(validNodeID)
+
+// 	t.Run("should encrypt message for player with shares", func(t *testing) {
+// 		ShadowEncrypt()
+// 	})
+// }
+
+// func TestShadowDecryption(t *testing.T) {
+// 	curve, g2, zkParam, timeout, id, _, _ := getValidNodeParamsForTesting(t)
+// 	threshold := 4
+// 	validNodeID := curve.Scalar().SetInt64(12345)
+
+// 	gNode, err := GenerateNode(
+// 		curve, g2, zkParam,
+// 		timeout, id, bn256.NewSuite().RandomStream(), threshold,
+// 	)
+
+// 	validShare1, validShare2 := gNode.EvaluatePolynomials(validNodeID)
+
+// 	t.Run("should decrypt message given other players' shares", func(t *testing) {
+//		ShadowDecrypt()
+// 	})
+// }
