@@ -413,7 +413,40 @@ func TestLagrangeInterpolationZero(t *testing.T) {
 		}
 	})
 
-	t.Run("interpolation with invalid points should fail", func(t *testing.T) {
+	t.Run("interpolation with nil points should error", func(t *testing.T) {
+		order := 2
+
+		nilSamplePoints := make([]struct {
+			x  kyber.Scalar
+			fX kyber.Scalar
+		}, order)
+
+		res, err := LagrangeInterpolateZero(nilSamplePoints, curve)
+
+		if res != nil || err == nil {
+			t.Errorf(
+				"interpolated with nil x points %v\n"+
+					"err: %v",
+				res, err)
+			return
+		}
+
+		for i := range nilSamplePoints {
+			nilSamplePoints[i].x = curve.Scalar().Pick(rand)
+		}
+
+		res, err = LagrangeInterpolateZero(nilSamplePoints, curve)
+
+		if res != nil || err == nil {
+			t.Errorf(
+				"interpolated with nil fX points %v\n"+
+					"err: %v",
+				res, err)
+			return
+		}
+	})
+
+	t.Run("interpolation with random invalid points should fail", func(t *testing.T) {
 		order := 2
 		poly, err := generateSecretPolynomial(curve, rand, order)
 		if err != nil {
