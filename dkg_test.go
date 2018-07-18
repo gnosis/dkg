@@ -400,7 +400,59 @@ func TestLagrangeInterpolationZero(t *testing.T) {
 	curve, _, _, _, _, _, _ := getValidNodeParamsForTesting(t)
 	rand := bn256.NewSuite().RandomStream()
 
-	t.Run("calculates polynomial result", func(t *testing.T) {
+	t.Run("should not create polynomials of order less than 1", func(t *testing.T) {
+		order := 0
+		poly, err := generateSecretPolynomial(curve, rand, order)
+
+		if err == nil {
+			t.Errorf(
+				"generated invalid polynomial of order %v: %v\n"+
+					"err: %v\n",
+				order, poly, err,
+			)
+		}
+	})
+
+	t.Run("interpolation with invalid points should fail", func(t *testing.T) {
+		order := 2
+		poly, err := generateSecretPolynomial(curve, rand, order)
+		if err != nil {
+			t.Errorf("Could not generate polynomial: %v", err)
+			return
+		}
+
+		invalidSamplePoints := make([]struct {
+			x  kyber.Scalar
+			fX kyber.Scalar
+		}, order)
+
+		for i := range invalidSamplePoints {
+			invalidSamplePoints[i].x = curve.Scalar().Pick(rand)
+			invalidSamplePoints[i].fX = curve.Scalar().Pick(rand)
+		}
+
+		res, err := LagrangeInterpolateZero(invalidSamplePoints, curve)
+
+		expected := poly[0]
+
+		if !expected.Equal(poly.evaluate(curve.Scalar().Zero())) {
+			t.Errorf("Polynomial zero should be same as constant coefficient")
+			return
+		}
+
+		if expected.Equal(res) || err != nil {
+			t.Errorf(
+				"Polynomials should not match\n"+
+					"expected: %v\n"+
+					"actual: %v\n"+
+					"polynomial coefficients %v\n"+
+					"err: %v\n",
+				expected, res, poly, err,
+			)
+		}
+	})
+
+	t.Run("calculates basic order 2 polynomial result", func(t *testing.T) {
 		// 1. create a random polynomial with threshold t
 		// 2. sample t points from it (x1, fX1) ... (xt, fXt) (this is using the evaluate function)
 		// 3. pass those points into LagrangeInterpolateZero(..) and verify that the result of that == random polynomial `evaluate`d at 0
@@ -435,6 +487,44 @@ func TestLagrangeInterpolationZero(t *testing.T) {
 					"expected: %v\n"+
 					"actual:   %v\n"+
 					"polynomial coefficients: %v\n"+
+					"err: %v\n",
+				expected, res, poly, err,
+			)
+		}
+	})
+
+	t.Run("calculates higher order 10 polynomial result", func(t *testing.T) {
+		order := 10
+		poly, err := generateSecretPolynomial(curve, rand, order)
+		if err != nil {
+			t.Errorf("Could not generate polynomial: %v", err)
+			return
+		}
+
+		samplePoints := make([]struct {
+			x  kyber.Scalar
+			fX kyber.Scalar
+		}, order)
+		for i := range samplePoints {
+			samplePoints[i].x = curve.Scalar().Pick(rand)
+			samplePoints[i].fX = poly.evaluate(samplePoints[i].x)
+		}
+
+		res, err := LagrangeInterpolateZero(samplePoints, curve)
+
+		expected := poly[0]
+
+		if !expected.Equal(poly.evaluate(curve.Scalar().Zero())) {
+			t.Errorf("Polynomial zero should be same as constant coefficient")
+			return
+		}
+
+		if !expected.Equal(res) || err != nil {
+			t.Errorf(
+				"Polynomials do not match\n"+
+					"expected: %v\n"+
+					"actual: %v\n"+
+					"polynomial coefficients %v\n"+
 					"err: %v\n",
 				expected, res, poly, err,
 			)
