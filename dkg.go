@@ -272,3 +272,39 @@ func GenerateNode(
 
 	return generatedNode, nil
 }
+
+// LagrangeInterpolateZero - find a constant in a source polynomial S=f(0) using Lagrange polynomials
+// using computationally efficient approach https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing#Computationally_Efficient_Approach
+func LagrangeInterpolateZero(points []struct{ x, fX kyber.Scalar }, group kyber.Group) (kyber.Scalar, error) {
+	if len(points) < 2 {
+		return nil, InvalidPointsLengthError{len(points)}
+	}
+
+	constant := group.Scalar().Zero()
+
+	for j := 0; j < len(points); j++ {
+		// outer summation
+		pointJ := points[j]
+		if pointJ.x == nil {
+			return nil, InvalidPointValueError{pointJ.x}
+		} else if pointJ.fX == nil {
+			return nil, InvalidPointValueError{pointJ.fX}
+		}
+
+		product := group.Scalar().One()
+
+		for _, point := range points {
+			if point.x == pointJ.x {
+				continue
+			}
+			// inner products
+			division := group.Scalar().Div(point.x, group.Scalar().Sub(point.x, pointJ.x)) // x_m / (x_m - x_j)
+			product = group.Scalar().Mul(product, division)                                // mathematical product
+
+		}
+		product = group.Scalar().Mul(product, pointJ.fX) // final multiplication by f(x_j)
+		constant = group.Scalar().Add(constant, product)
+
+	}
+	return constant, nil
+}

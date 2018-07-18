@@ -61,3 +61,21 @@ func (e ParticipantNotFoundError) Error() string {
 		e.nodeID, e.participantID,
 	)
 }
+
+// InvalidPointsLengthError indicates that the number of points given was below the required amount
+type InvalidPointsLengthError struct {
+	len int
+}
+
+func (e InvalidPointsLengthError) Error() string {
+	return fmt.Sprintf("invalid length of: %v given for points array", e.len)
+}
+
+// InvalidPointValueError scalar point value should not be nil
+type InvalidPointValueError struct {
+	value kyber.Scalar
+}
+
+func (e InvalidPointValueError) Error() string {
+	return fmt.Sprintf("scalar point values: %v should not be nil", e.value)
+}
