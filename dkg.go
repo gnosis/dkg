@@ -272,3 +272,32 @@ func GenerateNode(
 
 	return generatedNode, nil
 }
+
+func ShadowEncrypt(
+	curve kyber.Group,
+	playeri kyber.Scalar,
+	share kyber.Scalar,
+	players []kyber.Scalar,
+) kyber.Scalar {
+	shadow := curve.Scalar().One()
+	for _, playerj := range players {
+		den := curve.Scalar().Sub(playeri, playerj)
+		shadow.Mul(shadow, curve.Scalar().Div(playeri, den))
+	}
+	return shadow.Mul(shadow, share)
+}
+
+// func ShadowDecrypt(
+// 	playeri kyber.Scalar,
+// 	shadowi kyber.Scalar,
+// 	players []kyber.Scalar,
+// 	shadows []kyber.Scalar,
+// 	key kyber.Scalar,
+// 	tHat kyber.Scalar,
+// ) Message {
+// 	/*
+// 		1. compute and broadcast Ti = key * shadowi * tHat
+// 		2. receive Tj's and compute SUM_k=1^t+1 Tk
+// 		3. compute message M = M' * W / key
+// 	*/
+// }
