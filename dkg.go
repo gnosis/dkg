@@ -295,6 +295,7 @@ func ShadowDecrypt(
 	shadows []kyber.Scalar,
 	key kyber.Scalar,
 	tHat kyber.Scalar,
+	encrypted kyber.Scalar,
 ) Message {
 	/*
 		1. compute and broadcast Ti = key * shadowi * tHat
@@ -320,7 +321,9 @@ func ShadowDecrypt(
 
 		Tj := curve.Scalar().Mul(shadowj, tHat)
 
-		shadowSum = shadowSum.Add(shadowSum, Tj)
+		shadowSum = shadowSum.Add(shadowSum, Tj) // SUM_k=1^t+1 Tk
 	}
 
+	message := curve.Scalar().Add(encrypted, shadowSum.Div(shadowSum, key)) // M = M' + W / key
+	return make(Message{message})
 }
