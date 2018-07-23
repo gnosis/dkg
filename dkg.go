@@ -292,7 +292,6 @@ func ShadowDecrypt(
 	playeri kyber.Scalar,
 	players []kyber.Scalar,
 	share kyber.Scalar,
-	shadows []kyber.Scalar,
 	key kyber.Scalar,
 	tHat kyber.Scalar,
 	encrypted kyber.Scalar,
