@@ -9,6 +9,8 @@ import (
 
 	"github.com/dedis/kyber"
 	"github.com/dedis/kyber/pairing/bn256"
+	"github.com/dedis/kyber/util/random"
+	// "golang.org/x/crypto/openpgp/elgamal"
 )
 
 func getValidNodeParamsForTesting(t *testing.T) (
@@ -63,6 +65,35 @@ func addParticipantToNodeList(
 	}
 	n.otherParticipants = append(n.otherParticipants, participant)
 	return n
+}
+
+// ElGamal Encryption and Decryption from https://github.com/dedis/kyber/blob/master/examples/enc_test.go
+func ElGamalEncrypt(group kyber.Group, pubkey kyber.Point, message []byte) (
+	K, C kyber.Point, remainder []byte) {
+
+	// Embed the message (or as much of it as will fit) into a curve point.
+	M := group.Point().Embed(message, random.New())
+	max := group.Point().EmbedLen()
+	if max > len(message) {
+		max = len(message)
+	}
+	remainder = message[max:]
+	// ElGamal-encrypt the point to produce ciphertext (K,C).
+	k := group.Scalar().Pick(random.New()) // ephemeral private key
+	K = group.Point().Mul(k, nil)          // ephemeral DH public key
+	S := group.Point().Mul(k, pubkey)      // ephemeral DH shared secret
+	C = S.Add(S, M)                        // message blinded with secret
+	return
+}
+
+func ElGamalDecrypt(group kyber.Group, prikey kyber.Scalar, K, C kyber.Point) (
+	message []byte, err error) {
+
+	// ElGamal-decrypt the ciphertext (K,C) to reproduce the message.
+	S := group.Point().Mul(prikey, K) // regenerate shared secret
+	M := group.Point().Sub(C, S)      // use to un-blind the message
+	message, err = M.Data()           // extract the embedded data
+	return
 }
 
 func TestInvalidNodeConstruction(t *testing.T) {
@@ -395,20 +426,45 @@ func TestGenerateNodeAndSecrets(t *testing.T) {
 
 }
 
-// func TestShadowComputationAndExchange(t *testing.T) {
-// 	curve, g2, zkParam, timeout, id, _, _ := getValidNodeParamsForTesting(t)
-// 	threshold := 4
-// 	validNodeID := curve.Scalar().SetInt64(12345)
+func TestShadowComputationAndExchange(t *testing.T) {
+	curve, g2, zkParam, timeout, id, _, _ := getValidNodeParamsForTesting(t)
 
-// 	gNode, err := GenerateNode(
-// 		curve, g2, zkParam,
-// 		timeout, id, bn256.NewSuite().RandomStream(), threshold,
-// 	)
+	// pub/priv keypair derived from trusted information center
+	k := curve.Scalar().Pick(curve.RandomStream()) // random value k (need new random stream)
+	y := curve.Point().Mul(k, nil)                 // pub key
 
-// 	validShare1, validShare2 := gNode.EvaluatePolynomials(validNodeID)
+	// ElGamal encrypt a message
+	mBefore := []byte("gnosis prediction markets")
+	tHat, mEnc, _ := ElGamalEncrypt(curve, y, mBefore)
 
-// 	t.Run("should encrypt message for player with shares", func(t *testing) {
-// 		msg := ShadowDecrypt(curve, playeri, players, share, key, tHat, encrypted)
+	// DKG setup
+	threshold := 4
+	gNode, err := GenerateNode(
+		curve, g2, zkParam,
+		timeout, id, bn256.NewSuite().RandomStream(), threshold,
+	)
+	playeriID := curve.Scalar().SetInt64(12345)
+	si1, si2 := gNode.EvaluatePolynomials(playeriID)
+	playeri := gNode.VerificationPoints()
+	gNode = addParticipantToNodeList(
+		gNode, playeriID, si1, si2, playeri,
+	)
+	players := []curve.Scalar().Zero()
+	for i, participant := range gNode.otherParticipants {
+		players.append(participant.verificationPoints[0]) // ignoring second tuple value for now
+	}
 
-// 	})
-// }
+	key := // get access key n^-1 for this group?
+
+		t.Run("should decrypt message for player with shares", func(t *testing) {
+			mDec := ShadowDecrypt(curve, playeri[0], players, si1, key, tHat, mEnc)
+			if !mEnc.Equal(mDec) {
+				t.Errorf(
+					"decryption failed\n"+
+						"expected message: %v\n"+
+						"but received: %v\n",
+					mEnc, mDec,
+				)
+			}
+		})
+}

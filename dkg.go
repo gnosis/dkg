@@ -275,38 +275,34 @@ func GenerateNode(
 
 func evaluateShadow(
 	curve kyber.Group,
-	playeri kyber.Scalar,
-	share kyber.Scalar,
-	players []kyber.Scalar,
-) kyber.Scalar {
-	shadow := curve.Scalar().One()
+	playeri kyber.Point,
+	share kyber.Point,
+	players []kyber.Point,
+) kyber.Point {
+	shadow := curve.Point().Null()
 	for _, playerj := range players {
-		denom := curve.Scalar().Sub(playeri, playerj)
-		shadow.Mul(shadow, curve.Scalar().Div(playeri, denom)) // p_j / (p_i - p_j)
+		denom := curve.Point().Sub(playeri, playerj)
+		shadow.Mul(shadow, curve.Point().Div(playeri, denom)) // p_j / (p_i - p_j)
 	}
 	return shadow.Mul(shadow, share)
 }
 
 func ShadowDecrypt(
 	curve kyber.Group,
-	playeri kyber.Scalar,
-	players []kyber.Scalar,
-	share kyber.Scalar,
+	playeri kyber.Point,
+	players []kyber.Point,
+	share kyber.Point,
 	key kyber.Scalar,
 	tHat kyber.Scalar,
-	encrypted kyber.Scalar,
-) Message {
-	/*
-		1. compute and broadcast Ti = key * shadowi * tHat
-		2. receive Tj's and compute SUM_k=1^t+1 Tk
-		3. compute message M = M' * W / key
-	*/
-
+	mEncrypted kyber.Scalar,
+) []byte {
+	// 1. compute and broadcast Ti = key * shadowi *tHat
 	shadowi := evaluateShadow(curve, playeri, share, players)
 
 	Ti := curve.Scalar().Mul(key, shadowi.Mul(shadowi, tHat)) // key * shadowi * tHat
 	// TODO: Broadcast Ti
 
+	// 2. receive Tj's and compute SUM_k=1^t+1 Tk
 	// TODO: Receive Tj's
 	shadowSum := curve.Scalar().One()
 
@@ -323,6 +319,7 @@ func ShadowDecrypt(
 		shadowSum = shadowSum.Add(shadowSum, Tj) // SUM_k=1^t+1 Tk
 	}
 
-	message := curve.Scalar().Add(encrypted, shadowSum.Div(shadowSum, key)) // M = M' + W / key
+	// 3. compute message M = M' * W / key
+	message := curve.Scalar().Add(mEncrypted, shadowSum.Div(shadowSum, key)) // M = M' + W / key
 	return make(Message{message})
 }
